@@ -71,13 +71,17 @@ a script.
 
 ## Step 2 — One login per facility mints the tokens
 
-Each of these opens a **browser login** and writes its token into `.env`:
+One command per facility. Each opens **two browser logins** — the Globus
+Transfer token, then that facility's IRI token — and writes both into `.env`:
 
 ```bash
-python scripts/auth/globus_auth.py     authenticate  # Globus Transfer (all facilities)
-python scripts/auth/alcf_iri_token.py  authenticate  # ALCF  -> IRI_TOKEN_ALCF
-python scripts/auth/nersc_iri_token.py authenticate  # NERSC -> IRI_TOKEN_NERSC
+python scripts/auth/globus_auth.py authenticate --facility alcf    # -> IRI_TOKEN_ALCF
+python scripts/auth/globus_auth.py authenticate --facility nersc   # -> IRI_TOKEN_NERSC
 ```
+
+Run only the facility you actually have. Each login announces itself
+(`=== Login 1 of 2: Globus Transfer ===`), so you always know which service
+the browser is asking about.
 
 - **ALCF / Polaris** — log in with your ALCF Globus identity and grant the
   scopes. Writes `IRI_TOKEN_ALCF`.
@@ -87,8 +91,13 @@ python scripts/auth/nersc_iri_token.py authenticate  # NERSC -> IRI_TOKEN_NERSC
   Writes `GLOBUS_TRANSFER_TOKEN`. Check it any time with
   `python scripts/auth/globus_auth.py status`.
 
-Over SSH with no browser? Each script prints a URL — open it anywhere and
+Over SSH with no browser? Each login prints a URL — open it anywhere and
 paste the code back.
+
+> **Why not run `alcf_iri_token.py` / `nersc_iri_token.py` yourself?** You can,
+> and they still work standalone. But `globus_auth.py authenticate` already
+> runs them for you, so doing both just means logging in twice. Drop
+> `--facility` to mint every facility's token in one pass.
 
 ### OLCF / Frontier — no browser flow, paste a portal token
 
