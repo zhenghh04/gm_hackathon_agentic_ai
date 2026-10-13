@@ -176,10 +176,15 @@ Part 2 needs these. Each facility authenticates as **you**:
 
 | Facility (system) | Flow | Token in `.env` |
 | --- | --- | --- |
-| ALCF (Polaris) | Browser **Globus** login (`scripts/auth/alcf_iri_token.py`) | `IRI_TOKEN_ALCF` |
-| NERSC (Perlmutter) | Browser **Globus** login, forced through `nersc.gov` identity | `IRI_TOKEN_NERSC` |
+| ALCF (Polaris) | `globus_auth.py authenticate --facility alcf` | `IRI_TOKEN_ALCF` |
+| NERSC (Perlmutter) | `… --facility nersc` — also links a `nersc.gov` identity | `IRI_TOKEN_NERSC` |
 | OLCF (Frontier) | Manually minted **myOLCF API token** (no browser flow) | `IRI_TOKEN_OLCF` |
-| Any facility (data movement) | **Globus Transfer** token (`scripts/auth/globus_auth.py`) | `GLOBUS_TRANSFER_TOKEN` |
+| Any facility (data movement) | Same command — the Globus Transfer token comes with it | `GLOBUS_TRANSFER_TOKEN` |
+
+One `scripts/auth/globus_auth.py authenticate --facility <site>` run mints both
+that facility's IRI token and the shared Globus Transfer token, in two labelled
+browser logins. The per-facility helpers still work standalone, but running
+them too just means logging in twice.
 
 The `IRI_TOKEN_<FACILITY>` names are the ones the DOE IRI hands-on session uses,
 so a token you already exported there works here unchanged.

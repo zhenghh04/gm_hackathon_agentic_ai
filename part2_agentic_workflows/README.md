@@ -41,8 +41,8 @@ What MCP buys you:
 | Server | Serves | Auth |
 | --- | --- | --- |
 | `knowledge` | `retrieve_alcf_docs` — live ALCF/OLCF/NERSC/LLNL docs, plus PBS, Slurm, CUDA, HIP, oneAPI, SYCL, OpenMP | **none** |
-| `alcf-iri` | **Polaris** | Globus browser login (`alcf_iri_token.py`) |
-| `nersc-iri` | **Perlmutter** | Globus browser login via nersc.gov (`nersc_iri_token.py`) |
+| `alcf-iri` | **Polaris** | `globus_auth.py authenticate --facility alcf` |
+| `nersc-iri` | **Perlmutter** | `… --facility nersc` (links a nersc.gov identity) |
 | `olcf-iri` | **Frontier** | manual API token from myOLCF (**compute scope**) |
 
 **You don't need all three facilities.** Set up the one(s) you have; a server
