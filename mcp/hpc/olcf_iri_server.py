@@ -88,7 +88,7 @@ def _fmt(data) -> str:
 
 
 def _is_shell_placeholder(token: str) -> bool:
-    """True if token looks like an unresolved shell var, e.g. ${OLCF_IRI_TOKEN}."""
+    """True if token looks like an unresolved shell var, e.g. ${IRI_TOKEN_OLCF}."""
     t = (token or "").strip()
     return t.startswith("${") and t.endswith("}")
 
@@ -105,7 +105,7 @@ def _validate_jwt(token: str) -> tuple[bool, str]:
         return False, "empty token"
     if _is_shell_placeholder(token):
         return False, (
-            "token is an unresolved shell placeholder (e.g. ${OLCF_IRI_TOKEN}); "
+            "token is an unresolved shell placeholder (e.g. ${IRI_TOKEN_OLCF}); "
             "pass the actual JWT value, not the variable reference"
         )
     parts = token.split(".")
@@ -132,7 +132,7 @@ async def authenticate(token: str = "") -> str:
     Args:
         token: A valid OLCF IRI Project Access Token (issued at
                https://my.olcf.ornl.gov → Projects → API Tokens).
-               If empty, falls back to IRI_TOKEN_OLCF / OLCF_IRI_TOKEN in
+               If empty, falls back to IRI_TOKEN_OLCF in
                .env (re-read at call time). So a bare authenticate() succeeds
                whenever .env already has a fresh JWT.
 
@@ -143,11 +143,10 @@ async def authenticate(token: str = "") -> str:
 
     The tool refuses to store the value and leaves .env untouched if
     the token fails a local JWT shape check (wrong format, expired, or
-    a literal shell placeholder like ${OLCF_IRI_TOKEN}). This guards
+    a literal shell placeholder like ${IRI_TOKEN_OLCF}). This guards
     against accidentally clobbering a working token in .env.
 
-    Call this before using compute tools. Saved to .env as IRI_TOKEN_OLCF
-    (and the legacy OLCF_IRI_TOKEN).
+    Call this before using compute tools. Saved to .env as IRI_TOKEN_OLCF.
     """
     # Re-read .env in case the token was rotated after the server started.
     # OLCF tokens are manual-refresh only (myOLCF web UI); this just picks

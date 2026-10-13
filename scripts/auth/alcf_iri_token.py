@@ -66,13 +66,15 @@ def _resolve_env_file() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parent.parent.parent / ".env"
 
 ENV_FILE = _resolve_env_file()
-# The DOE IRI hands-on session standardized on IRI_TOKEN_<FACILITY>; this repo
-# originally used <FACILITY>_IRI_TOKEN. Write BOTH (see ENV_VARS) so the two can
-# never drift apart, and prefer the IRI spelling on read. Mirrors the alias
-# table in mcp/auth_env.py.
+# The DOE IRI hands-on session standardized on IRI_TOKEN_<FACILITY>, and that
+# is now the only spelling this repo writes or reads. Mirrors IRI_TOKEN_NAMES
+# in mcp/auth_env.py.
 ENV_VAR = "IRI_TOKEN_ALCF"
-ENV_VAR_LEGACY = "ALCF_IRI_TOKEN"
-ENV_VARS = (ENV_VAR, ENV_VAR_LEGACY)
+ENV_VARS = (ENV_VAR,)
+# Retired 2026-10-13. Never written, never read -- listed only so logout and
+# re-auth can clear a stale value left behind in an older .env, which would
+# otherwise sit there forever looking like a live credential.
+RETIRED_ENV_VARS = ("ALCF_IRI_TOKEN", "ALCF_IRI_ACCESS_TOKEN")
 REFRESH_VAR = "ALCF_IRI_REFRESH_TOKEN"
 EXPIRES_VAR = "ALCF_IRI_EXPIRES_AT"
 
@@ -179,7 +181,7 @@ class _TokenPageHandler(BaseHTTPRequestHandler):
             return
 
         self.server.html_state["logged_out"] = True
-        _remove_env_keys([*ENV_VARS, REFRESH_VAR, EXPIRES_VAR])
+        _remove_env_keys([*ENV_VARS, *RETIRED_ENV_VARS, REFRESH_VAR, EXPIRES_VAR])
         self.server.html_state["html"] = _build_logged_out_html()
         self.server.html_state["hold_until"] = time.time() + POST_LOGOUT_HOLD_SECONDS
         body = json.dumps({"ok": True}).encode("utf-8")
@@ -276,18 +278,12 @@ def _load_token_data() -> dict:
         for line in ENV_FILE.read_text().splitlines():
             for key, attr in [
                 (ENV_VAR, "access_token"),
-                (ENV_VAR_LEGACY, "_access_token_legacy"),
                 (REFRESH_VAR, "refresh_token"),
                 (EXPIRES_VAR, "expires_at_seconds"),
             ]:
                 if line.startswith(f"{key}=") or line.startswith(f"export {key}="):
                     data[attr] = line.split("=", 1)[1].strip().strip('"').strip("'")
                     break
-    # The legacy spelling is only a fallback: an .env written before the rename
-    # has it alone, but when both are present the preferred name wins.
-    legacy = data.pop("_access_token_legacy", "")
-    if not data.get("access_token"):
-        data["access_token"] = legacy
     if not data.get("access_token"):
         raise FacilityAPIAuthError(
             'No ALCF IRI token in .env. Run '
@@ -871,7 +867,7 @@ def logout() -> None:
     Remove ALCF IRI tokens from .env. Remote revocation is intentionally not
     attempted here.
     """
-    _remove_env_keys([*ENV_VARS, REFRESH_VAR, EXPIRES_VAR])
+    _remove_env_keys([*ENV_VARS, *RETIRED_ENV_VARS, REFRESH_VAR, EXPIRES_VAR])
     print(f"ALCF IRI tokens removed from {ENV_FILE}")
 
 

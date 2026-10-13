@@ -104,8 +104,8 @@ async def authenticate(token: str = "") -> str:
 
     Args:
         token: A valid Globus OAuth2 access token for the ALCF IRI API.
-               If empty, falls back to IRI_TOKEN_ALCF / ALCF_IRI_TOKEN /
-               ALCF_IRI_ACCESS_TOKEN in .env (re-read at call time). So a bare
+               If empty, falls back to IRI_TOKEN_ALCF
+               (re-read at call time). So a bare
                authenticate() succeeds whenever .env already has a fresh token.
 
     Call this before using tools that require authentication (account,

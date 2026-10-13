@@ -84,7 +84,7 @@ async def authenticate(token: str = "") -> str:
     Args:
         token: A valid NERSC IRI Bearer token. Obtain one by running:
                python scripts/auth/nersc_iri_token.py
-               If empty, falls back to IRI_TOKEN_NERSC / NERSC_IRI_TOKEN in
+               If empty, falls back to IRI_TOKEN_NERSC in
                .env (re-read at call time). So a bare authenticate() succeeds
                whenever .env already has a fresh token.
 
@@ -117,9 +117,8 @@ async def fetch_token() -> str:
 
     NERSC IRI tokens are obtained interactively via
     `python scripts/auth/nersc_iri_token.py` (Globus OAuth2 flow). This tool
-    just verifies that the token currently in IRI_TOKEN_NERSC (or the legacy
-    NERSC_IRI_TOKEN) is still valid; it cannot mint a new one
-    non-interactively.
+    just verifies that the token currently in IRI_TOKEN_NERSC is still valid;
+    it cannot mint a new one non-interactively.
     """
     existing = _read_token("nersc")
     if not existing:

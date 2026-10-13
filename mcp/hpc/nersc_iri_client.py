@@ -5,7 +5,7 @@
 
 Authentication: NERSC IRI uses a Globus OAuth2 bearer token. Obtain one with
 `python scripts/auth/nersc_iri_token.py` and store it in `IRI_TOKEN_NERSC`
-(the legacy `NERSC_IRI_TOKEN` spelling is still read) in .env.
+in .env.
 
 API docs: https://api.iri.nersc.gov
 """
