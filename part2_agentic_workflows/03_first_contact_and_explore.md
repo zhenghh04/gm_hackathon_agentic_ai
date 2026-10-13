@@ -25,13 +25,25 @@ allocation.
 
 ## Step 1 — First contact
 
-In the session, type these in order:
+Lab 02's token minting ran in a shell, so start the agent again — **from the
+repo root**. That is where `.mcp.json` lives, and it is the only place the four
+servers get picked up:
+
+```bash
+cd gm_hackathon_agentic_ai/
+claude              # ...or codex / opencode
+```
+
+Then type these in order:
 
 ```text
-> What model are you?
+> What model are you on?
 /model    # what is ACTUALLY configured
 /mcp      # the four servers and their tools
 ```
+
+> An **empty** `/mcp` list almost always means you started the agent somewhere
+> other than the repo root — not that your tokens are wrong.
 
 > **Codex** has the same two: `/model` and `/mcp`.
 >
