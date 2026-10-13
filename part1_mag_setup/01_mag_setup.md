@@ -118,13 +118,13 @@ Put the PAT in your environment too — Codex and opencode read it from there,
 and it keeps the secret out of your shell history:
 
 ```bash
-read -rs AMSC_I2_API_KEY   # paste the PAT; nothing echoes
-export AMSC_I2_API_KEY
+read -rs AMSC_TOKEN   # paste the PAT; nothing echoes
+export AMSC_TOKEN
 ```
 
 ```powershell
 # Windows (PowerShell)
-$env:AMSC_I2_API_KEY = Read-Host -MaskInput 'PAT'
+$env:AMSC_TOKEN = Read-Host -MaskInput 'PAT'
 ```
 
 > `-MaskInput` is **PowerShell 7.1+**. On Windows PowerShell 5.1 a bare
@@ -158,7 +158,7 @@ Windows: `%USERPROFILE%\.claude\settings.json`). Create it if it doesn't exist:
 > **Why no pinned model ID?** MAG's catalogue is its own; a pinned string that
 > isn't served comes back as "model not found". Ask MAG what it serves:
 > ```bash
-> curl -H "Authorization: Bearer $AMSC_I2_API_KEY" \
+> curl -H "Authorization: Bearer $AMSC_TOKEN" \
 >   https://mag.genesis.americansciencecloud.org/v1/models | jq '.data[].id'
 > ```
 
@@ -168,7 +168,7 @@ Set once, every shell inherits it.
 > of `settings.json` and export it instead:
 > ```bash
 > export ANTHROPIC_BASE_URL=https://mag.genesis.americansciencecloud.org
-> export ANTHROPIC_AUTH_TOKEN=$AMSC_I2_API_KEY
+> export ANTHROPIC_AUTH_TOKEN=$AMSC_TOKEN
 > ```
 > Then launch `claude` from that shell.
 
@@ -187,15 +187,20 @@ model_provider = "amsc"
 [model_providers.amsc]
 name     = "AmSC MAG"
 base_url = "https://mag.genesis.americansciencecloud.org/v1"
-env_key  = "AMSC_I2_API_KEY"
-wire_api = "chat"
+env_key  = "AMSC_TOKEN"
+wire_api = "responses"
 ```
+
+> **`wire_api` must be `responses`.** Codex 0.155 and later removed the `chat`
+> wire; a config that still asks for it refuses to load with
+> `` `wire_api = "chat"` is no longer supported ``. MAG serves the Responses
+> wire natively, so `responses` is the setting that works.
 
 The key is read from the environment variable named by `env_key`, so no secret
 lives in the TOML. Then:
 
 ```bash
-export AMSC_I2_API_KEY=YOUR_PAT_HERE   # the same PAT, from Step 3
+export AMSC_TOKEN=YOUR_PAT_HERE   # the same PAT, from Step 3
 codex
 ```
 
@@ -213,7 +218,7 @@ response".
 ```bash
 curl -fsSL https://opencode.ai/install | bash   # per-user, no admin
 cd gm_hackathon_agentic_ai                      # where opencode.jsonc lives
-export AMSC_I2_API_KEY=YOUR_PAT_HERE
+export AMSC_TOKEN=YOUR_PAT_HERE
 opencode
 ```
 

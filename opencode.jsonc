@@ -9,13 +9,13 @@
 // MAG is an OpenAI-compatible (LiteLLM) gateway. opencode must talk to it over
 // the OpenAI wire with the trailing /v1 — the Anthropic wire returns a 302 that
 // opencode does not follow, which surfaces as a silent "no response". Set your
-// MAG Personal Access Token in the AMSC_I2_API_KEY environment variable (the same
+// MAG Personal Access Token in the AMSC_TOKEN environment variable (the same
 // token Lab 01 uses for Claude Code), then run:  opencode
 //
 // MODEL IDS BELOW ARE A STARTING POINT, NOT A PROMISE. MAG's catalogue is its
 // own and changes; a pinned ID it no longer serves fails as "model not found".
 // Ask the gateway for the authoritative list and edit this block to match:
-//   curl -H "Authorization: Bearer $AMSC_I2_API_KEY" \
+//   curl -H "Authorization: Bearer $AMSC_TOKEN" \
 //     https://mag.genesis.americansciencecloud.org/v1/models | jq '.data[].id'
 {
   "$schema": "https://opencode.ai/config.json",
@@ -27,7 +27,7 @@
       "name": "AmSC MAG",
       "options": {
         "baseURL": "https://mag.genesis.americansciencecloud.org/v1",
-        "apiKey": "{env:AMSC_I2_API_KEY}"
+        "apiKey": "{env:AMSC_TOKEN}"
       },
       "models": {
         "claude-sonnet-4-6": { "name": "Claude Sonnet 4.6 (via MAG)" },

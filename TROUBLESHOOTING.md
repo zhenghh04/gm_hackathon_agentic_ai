@@ -50,7 +50,7 @@ The model string isn't in MAG's catalogue. Use an alias (`opus`, `sonnet`,
 `haiku`) rather than a pinned ID, or ask MAG what it serves:
 
 ```bash
-curl -H "Authorization: Bearer $AMSC_I2_API_KEY" \
+curl -H "Authorization: Bearer $AMSC_TOKEN" \
   https://mag.genesis.americansciencecloud.org/v1/models | jq '.data[].id'
 ```
 
@@ -70,7 +70,7 @@ Both speak the **OpenAI wire** and need the trailing `/v1`:
 `https://mag.genesis.americansciencecloud.org/v1`. Without it the Anthropic
 wire returns a redirect neither follows, which looks like silence. The
 `ANTHROPIC_*` variables are Claude Code's, and do nothing for these two — they
-read the PAT from `AMSC_I2_API_KEY`.
+read the PAT from `AMSC_TOKEN`.
 
 ---
 
