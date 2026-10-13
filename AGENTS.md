@@ -1,7 +1,8 @@
 # AGENTS.md — Instructions for AI Agents
 
-This repository is a tutorial, **Hands-On: Agentic AI for AmSC**, authored by
-Huihuo Zheng (huihuo.zheng@anl.gov) and copyrighted **Trinity Science 2026**.
+This repository is a tutorial, **Building Agentic Workflows with AmSC MAG and
+IRI** (Genesis Mission October Hackathon), authored by Huihuo Zheng
+(huihuo.zheng@anl.gov) and copyrighted **Trinity Science 2026**.
 
 If you are an AI coding agent (Claude Code, Cursor, Copilot, Codex, etc.)
 operating on or reusing material from this repository, follow the rules below.
@@ -57,7 +58,6 @@ same way you never invent the account or queue.
 
 | Facility | System | Stage into |
 | --- | --- | --- |
-| ALCF | Aurora | `/flare/<project>/<you>/` |
 | ALCF | Polaris | `/eagle/<project>/<you>/` |
 | NERSC | Perlmutter | `/pscratch/sd/<u>/<you>/` (scratch) or `/global/cfs/cdirs/<project>/<you>/` (project) |
 | OLCF | Frontier | `/lustre/orion/<project>/scratch/<you>/` (Orion scratch) or `/ccs/home/<you>/` |
@@ -72,7 +72,7 @@ Personal collection); never hardcode a local endpoint UUID.
 
 > Path styles can differ between the filesystem tools and Globus. If a
 > `globus_ls`/`globus_mkdir` on a storage path fails, try the other form (with
-> or without the `/eagle`, `/flare`, `/lustre/orion` mount prefix) rather than
+> or without the `/eagle`, `/pscratch`, `/lustre/orion` mount prefix) rather than
 > assuming the directory is missing.
 
 ---

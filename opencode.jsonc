@@ -1,16 +1,22 @@
 // Author: Huihuo Zheng, huihuo.zheng@anl.gov
 // Copyright: Trinity Science 2026
 //
-// opencode configuration for the "Hands-On: Agentic AI for AmSC" tutorial.
-// This is the agent-agnostic twin of .mcp.json (Claude Code): it points opencode
-// at the SAME four MCP servers AND at a model provider, so every lab in this
-// track runs identically under opencode for users without Claude access.
+// opencode configuration for "Building Agentic Workflows with AmSC MAG and IRI"
+// (Genesis Mission October Hackathon). This is the agent-agnostic twin of
+// .mcp.json (Claude Code): it points opencode at the SAME four MCP servers AND
+// at a model provider, so every lab runs identically under opencode.
 //
 // MAG is an OpenAI-compatible (LiteLLM) gateway. opencode must talk to it over
 // the OpenAI wire with the trailing /v1 — the Anthropic wire returns a 302 that
 // opencode does not follow, which surfaces as a silent "no response". Set your
 // MAG Personal Access Token in the AMSC_I2_API_KEY environment variable (the same
-// token Lab 00 uses for Claude Code), then run:  opencode
+// token Lab 01 uses for Claude Code), then run:  opencode
+//
+// MODEL IDS BELOW ARE A STARTING POINT, NOT A PROMISE. MAG's catalogue is its
+// own and changes; a pinned ID it no longer serves fails as "model not found".
+// Ask the gateway for the authoritative list and edit this block to match:
+//   curl -H "Authorization: Bearer $AMSC_I2_API_KEY" \
+//     https://mag.genesis.americansciencecloud.org/v1/models | jq '.data[].id'
 {
   "$schema": "https://opencode.ai/config.json",
 
@@ -20,7 +26,7 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "AmSC MAG",
       "options": {
-        "baseURL": "https://i2-api.genesis.american-science-cloud.org/v1",
+        "baseURL": "https://mag.genesis.americansciencecloud.org/v1",
         "apiKey": "{env:AMSC_I2_API_KEY}"
       },
       "models": {

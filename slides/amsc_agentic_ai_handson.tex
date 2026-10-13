@@ -478,7 +478,7 @@ base_url = "https://mag.genesis.americansciencecloud.org/v1"
 env_key  = "AMSC_I2_API_KEY"
 wire_api = "chat"
 \end{lstlisting}
-  \codetag{\faTerminal\ same PAT, same gateway --- only the wire differs; \texttt{@openai} pins the provider \emph{and} the allocation bucket it bills}
+  \codetag{\faTerminal\ same PAT, same gateway --- only the wire differs; \texttt{@openai} pins the provider \emph{and} the bucket it bills}
 \begin{lstlisting}[style=shell]
 export AMSC_I2_API_KEY=YOUR_PAT_HERE
 codex
@@ -702,7 +702,7 @@ gm_hackathon_agentic_ai/
 
 % ---------------------------------------------------------------- STEP 1
 % Three platforms, one flow. The per-OS lines are the ONLY ones that differ --
-% they match Lab 00's "Platform note" section (macOS/Linux/WSL vs native
+% they match Lab 01's "Platform note" section (macOS/Linux/WSL vs native
 % Windows), so the slide and the lab cannot drift. Two accuracy notes:
 %   - Read-Host -MaskInput is PowerShell 7.1+; on Windows PowerShell 5.1 the
 %     bare Read-Host echoes. Said on the slide rather than silently shown.
@@ -744,7 +744,7 @@ $env:AMSC_I2_API_KEY = Read-Host 'PAT'
   "model": "opus"
 }
 \end{lstlisting}
-      {\tiny\color{midgray}Set once, every shell inherits it --- then Lab 00's
+      {\tiny\color{midgray}Set once, every shell inherits it --- then Lab 01's
        round-trip check confirms the model answers.\par\vspace{3pt}
        \faWindows\ Native Windows: \texttt{\%USERPROFILE\%\textbackslash.claude\textbackslash settings.json}.
        Under WSL it is \texttt{\textasciitilde/.claude/} \emph{inside} the

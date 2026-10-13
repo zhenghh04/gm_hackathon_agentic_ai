@@ -76,10 +76,10 @@ approximate cost.
 | Symptom | Likely cause |
 | --- | --- |
 | Job dies at exit 127 | `#!/bin/bash -l` missing, so `module`/`conda` weren't on PATH |
-| File not found on the compute node | path is on a filesystem the node can't see (e.g. `/flare` from Polaris) |
+| File not found on the compute node | path is on a filesystem the node can't see (a storage-root path vs. the mounted one) |
 | Auth / 401 | token expired — re-run the relevant `scripts/auth/*.py` (or `globus_auth.py ensure_valid` for Globus Transfer) |
 | Wrong partition / burned allocation | account or queue was guessed instead of asked for |
 
 ---
 
-*Skill for the tutorial "Hands-On: Agentic AI for AmSC" — Huihuo Zheng, Trinity Science.*
+*Skill for "Building Agentic Workflows with AmSC MAG and IRI" — Huihuo Zheng, Trinity Science.*
