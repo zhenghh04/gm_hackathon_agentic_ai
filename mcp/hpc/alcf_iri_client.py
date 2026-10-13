@@ -14,6 +14,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # mcp/ root
 from auth_env import environ_token as _environ_token
+from auth_env import local_globus_endpoint as _local_globus_endpoint
 
 DEFAULT_BASE_URL = "https://api.alcf.anl.gov/api/v1"
 GLOBUS_TRANSFER_BASE_URL = "https://transfer.api.globus.org/v0.10"
@@ -347,6 +348,55 @@ class ALCFIRIClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def _mkdir_one(self, ep_id: str, path: str) -> bool:
+        """Create a single directory on an endpoint. True if created, False if
+        it already existed. Raises on any other error (e.g. permission).
+
+        Globus mkdir returns HTTP 502 with an `*Exists` code / "already exists"
+        message when the directory is already there; that is treated as success.
+        """
+        resp = await self._client.post(
+            f"{GLOBUS_TRANSFER_BASE_URL}/operation/endpoint/{ep_id}/mkdir",
+            headers=self._transfer_headers(),
+            json={"DATA_TYPE": "mkdir", "path": path},
+        )
+        if resp.status_code < 400:
+            return True
+        try:
+            body = resp.json()
+        except Exception:
+            body = {}
+        blob = f"{body.get('code', '')} {body.get('message', '')}".lower()
+        if "exists" in blob:
+            return False
+        resp.raise_for_status()
+        return False  # unreachable
+
+    async def globus_mkdir(self, endpoint: str, path: str, parents: bool = True) -> dict:
+        """Create a directory on a Globus endpoint, idempotently.
+
+        Native Globus mkdir makes a single level and errors if the directory
+        already exists or a parent is missing. This wrapper treats "already
+        exists" as success and, with parents=True (the default), creates each
+        missing ancestor top-down so a full path like
+        /<project>/<user>/run1 comes into being in one call. Use it to ensure a
+        staging destination exists before globus_transfer.
+        """
+        ep_id = await self._resolve_endpoint(endpoint)
+        clean = "/" + path.strip("/")
+        parts = [p for p in clean.split("/") if p]
+        if parents:
+            targets, accum = [], ""
+            for p in parts:
+                accum += "/" + p
+                targets.append(accum)
+        else:
+            targets = [clean]
+        created, existed = [], []
+        for target in targets:
+            (created if await self._mkdir_one(ep_id, target) else existed).append(target)
+        return {"endpoint": endpoint, "path": clean, "created": created, "already_existed": existed}
+
     async def globus_get_task(self, task_id: str) -> dict:
         """Get the status of a Globus Transfer task."""
         resp = await self._client.get(
@@ -357,27 +407,12 @@ class ALCFIRIClient:
         return resp.json()
 
     def _local_endpoint(self) -> str:
-        """Return the local Globus Connect Personal endpoint UUID.
+        """UUID of this machine's Globus Connect Personal collection.
 
-        Discovery order:
-          1. LOCAL_GLOBUS_ENDPOINT env var (explicit override)
-          2. globus_sdk.LocalGlobusConnectPersonal — reads ~/.globusonline/lta/client-id.txt
-          3. RuntimeError with a clear message
+        Delegates to the one canonical autodetect in auth_env so all three
+        facility clients resolve the local endpoint the same way.
         """
-        ep = os.environ.get("LOCAL_GLOBUS_ENDPOINT", "")
-        if ep:
-            return ep
-        try:
-            from globus_sdk import LocalGlobusConnectPersonal
-            ep = LocalGlobusConnectPersonal().endpoint_id
-        except Exception:
-            ep = None
-        if not ep:
-            raise RuntimeError(
-                "No local Globus Connect Personal endpoint found. "
-                "Install Globus Connect Personal or set LOCAL_GLOBUS_ENDPOINT in .env."
-            )
-        return ep
+        return _local_globus_endpoint()
 
     def _iri_resource_to_globus_endpoint(self, resource_id: str) -> str:
         """Map an IRI storage resource UUID to its Globus endpoint UUID."""

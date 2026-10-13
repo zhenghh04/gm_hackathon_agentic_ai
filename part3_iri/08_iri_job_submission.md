@@ -117,15 +117,19 @@ read log → fix → resubmit — and it's the bridge to Part 4.
 - [ ] You read the stdout and confirmed the GPU line.
 - [ ] (If it failed) you triaged it and resubmitted.
 
-You've run the core loop through IRI. Next, feed it real data.
+You've run the core loop through IRI. Next, feed it a real workload — from a
+single sentence.
 
 ---
 
 ## What's next
 
 You now know how to submit and monitor jobs on any of the three facilities
-through MCP tools, from your laptop. Ready for the next Part, or to go deeper?
-See the track README's [GOING_FURTHER](../GOING_FURTHER.md) section.
+through MCP tools, from your laptop. The capstone,
+[Lab 09 — One sentence → a MNIST job on a GPU](09_one_sentence_mnist.md), runs the
+same loop but has the agent author the training code itself from one sentence.
+Then, to go deeper, see the track README's
+[GOING_FURTHER](../GOING_FURTHER.md) section.
 
 ---
 

@@ -47,4 +47,34 @@ Preserve it on any document you reuse, and add it to any new tutorial document.
 
 ---
 
+## Staging inputs — where files go
+
+When staging local inputs to a facility (the `submit-job` skill, or any
+`globus_transfer`), put them in **your own per-user directory under the project
+space** — never a shared project root, never someone else's directory. Confirm
+`<project>` and `<you>` (your username) with the user; do not invent them, the
+same way you never invent the account or queue.
+
+| Facility | System | Stage into |
+| --- | --- | --- |
+| ALCF | Aurora | `/flare/<project>/<you>/` |
+| ALCF | Polaris | `/eagle/<project>/<you>/` |
+| NERSC | Perlmutter | `/pscratch/sd/<u>/<you>/` (scratch) or `/global/cfs/cdirs/<project>/<you>/` (project) |
+| OLCF | Frontier | `/lustre/orion/<project>/scratch/<you>/` (Orion scratch) or `/ccs/home/<you>/` |
+
+(`<u>` on Perlmutter is the first letter of your username.)
+
+Before transferring, call `globus_mkdir(endpoint, dir)` on the destination
+directory — it is idempotent and creates missing parents, so staging never
+fails on a missing folder — then `globus_ls` to confirm it exists and is yours.
+Resolve the transfer **source** with `local_endpoint` (your Globus Connect
+Personal collection); never hardcode a local endpoint UUID.
+
+> Path styles can differ between the filesystem tools and Globus. If a
+> `globus_ls`/`globus_mkdir` on a storage path fails, try the other form (with
+> or without the `/eagle`, `/flare`, `/lustre/orion` mount prefix) rather than
+> assuming the directory is missing.
+
+---
+
 *Tutorial created by Huihuo Zheng, huihuo.zheng@anl.gov, Trinity Science.*

@@ -117,6 +117,44 @@ def environ_token(facility: str) -> str:
     return ""
 
 
+def local_globus_endpoint() -> str:
+    """UUID of *this machine's* Globus Connect Personal collection.
+
+    This is the laptop/workstation endpoint that staging uses as the transfer
+    SOURCE. It is identical for every facility (ALCF / NERSC / OLCF) because it
+    identifies this machine, not the destination.
+
+    Discovery order (first hit wins):
+      1. ``LOCAL_GLOBUS_ENDPOINT`` — an explicit override, read from os.environ
+         first and then from the per-user .env, so an attendee can pin it.
+      2. ``globus_sdk.LocalGlobusConnectPersonal().endpoint_id`` — reads
+         ``~/.globusonline/lta/client-id.txt``, exactly as
+         ``globus endpoint local-id`` does. This is the autodetect path.
+
+    Raises ``RuntimeError`` with setup guidance if neither yields an endpoint,
+    which is also the honest signal that Globus Connect Personal is not set up
+    on this machine — no transfer would work until it is.
+    """
+    override = _usable(os.environ.get("LOCAL_GLOBUS_ENDPOINT", "")) or _usable(
+        read_value("LOCAL_GLOBUS_ENDPOINT")
+    )
+    if override:
+        return override
+    try:
+        from globus_sdk import LocalGlobusConnectPersonal
+
+        ep = LocalGlobusConnectPersonal().endpoint_id
+    except Exception:
+        ep = None
+    if not ep:
+        raise RuntimeError(
+            "No local Globus Connect Personal collection found on this machine. "
+            "Install and start Globus Connect Personal (see the GCP setup lab), "
+            "or set LOCAL_GLOBUS_ENDPOINT in your .env to pin it explicitly."
+        )
+    return ep
+
+
 def read_value(key: str) -> str:
     """Current value of ``key`` read STRAIGHT from env_file(), bypassing
     os.environ.

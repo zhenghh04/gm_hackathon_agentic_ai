@@ -38,6 +38,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # mcp/ root
 from auth_env import environ_token as _environ_token
+from auth_env import local_globus_endpoint as _local_globus_endpoint
 
 DEFAULT_BASE_URL = "https://amsc-moderate.s3m.olcf.ornl.gov"
 GLOBUS_TRANSFER_BASE_URL = "https://transfer.api.globus.org/v0.10"
@@ -339,6 +340,55 @@ class OLCFIRIClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def _mkdir_one(self, ep_id: str, path: str) -> bool:
+        """Create a single directory on an endpoint. True if created, False if
+        it already existed. Raises on any other error (e.g. permission).
+
+        Globus mkdir returns HTTP 502 with an `*Exists` code / "already exists"
+        message when the directory is already there; that is treated as success.
+        """
+        resp = await self._client.post(
+            f"{GLOBUS_TRANSFER_BASE_URL}/operation/endpoint/{ep_id}/mkdir",
+            headers=self._transfer_headers(),
+            json={"DATA_TYPE": "mkdir", "path": path},
+        )
+        if resp.status_code < 400:
+            return True
+        try:
+            body = resp.json()
+        except Exception:
+            body = {}
+        blob = f"{body.get('code', '')} {body.get('message', '')}".lower()
+        if "exists" in blob:
+            return False
+        resp.raise_for_status()
+        return False  # unreachable
+
+    async def globus_mkdir(self, endpoint: str, path: str, parents: bool = True) -> dict:
+        """Create a directory on a Globus endpoint, idempotently.
+
+        Native Globus mkdir makes a single level and errors if the directory
+        already exists or a parent is missing. This wrapper treats "already
+        exists" as success and, with parents=True (the default), creates each
+        missing ancestor top-down so a full path like
+        /ccs/home/<user>/run1 (or an Orion scratch path) comes into being in one
+        call. Use it to ensure a staging destination exists before globus_transfer.
+        """
+        ep_id = await self._resolve_endpoint(endpoint)
+        clean = "/" + path.strip("/")
+        parts = [p for p in clean.split("/") if p]
+        if parents:
+            targets, accum = [], ""
+            for p in parts:
+                accum += "/" + p
+                targets.append(accum)
+        else:
+            targets = [clean]
+        created, existed = [], []
+        for target in targets:
+            (created if await self._mkdir_one(ep_id, target) else existed).append(target)
+        return {"endpoint": endpoint, "path": clean, "created": created, "already_existed": existed}
+
     async def globus_get_task(self, task_id: str) -> dict:
         resp = await self._client.get(
             f"{GLOBUS_TRANSFER_BASE_URL}/task/{task_id}",
@@ -361,10 +411,12 @@ class OLCFIRIClient:
         return task
 
     def _local_endpoint(self) -> str:
-        ep = os.environ.get("LOCAL_GLOBUS_ENDPOINT", "3ebfde51-41f4-11f1-9105-02535127e3d7")
-        if not ep:
-            raise RuntimeError("No local Globus endpoint. Set LOCAL_GLOBUS_ENDPOINT env var.")
-        return ep
+        """UUID of this machine's Globus Connect Personal collection.
+
+        Delegates to the one canonical autodetect in auth_env so all three
+        facility clients resolve the local endpoint the same way.
+        """
+        return _local_globus_endpoint()
 
     async def upload_file(
         self, remote_path: str, content: str, endpoint: str = "olcf"

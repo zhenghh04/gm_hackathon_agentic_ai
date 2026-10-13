@@ -104,14 +104,19 @@ tunnel required. See [part2_hpc/README.md](part2_hpc/README.md) for the full int
 
 The agent stays **on your laptop**; reaching Polaris, Perlmutter, and Frontier
 happens entirely through the bundled `alcf-iri`, `nersc-iri`, and `olcf-iri` MCP
-servers' named tools. See [part3_iri/README.md](part3_iri/README.md) for the full
-intro. **Do [PREREQUISITES.md](PREREQUISITES.md) first** — an account and
-allocation on at least one facility, and the bundled MCP servers authenticated.
+servers' named tools — plus a fourth, token-free **`knowledge`** server
+(`retrieve_alcf_docs`) that answers facility questions from live ALCF/NERSC/OLCF
+docs. That is the four-server picture: **one for the model (MAG), one for
+knowledge, three for reach (IRI), and Globus for data.** See
+[part3_iri/README.md](part3_iri/README.md) for the full intro. **Do
+[PREREQUISITES.md](PREREQUISITES.md) first** — an account and allocation on at
+least one facility, and the bundled MCP servers authenticated.
 
 | Lab | Title | Time | Approx cost |
 | --- | --- | --- | --- |
 | [07](part3_iri/07_mcp_setup_and_explore.md) | Connect to ALCF/NERSC/OLCF & explore (read-only) | 20–30 min | free |
 | [08](part3_iri/08_iri_job_submission.md) | IRI job submission and monitoring | 30–45 min | ~1 node-min |
+| [09](part3_iri/09_one_sentence_mnist.md) | One sentence → a MNIST job on a GPU (capstone) | 20–30 min | ~1 node-min |
 
 Every lab is self-contained with: **objectives · time · prerequisites · concepts
 · hands-on steps · "what just happened" · a checkpoint · exercises**.
@@ -126,7 +131,7 @@ Part 1 — laptop only                Part 2 — native, on your HPC system
                                      ─────────────────────────────────────
                     PREREQUISITES.md  07 connect & explore (MCP setup)
                     (Part 3 only:     08 IRI job submission + monitor
-                     account,
+                     account,         09 one sentence → MNIST on a GPU
                      allocation,
                      IRI MCP servers)
 ```
@@ -171,7 +176,11 @@ or long-lived API keys checked into this repo.
 **1. The MAG token — lets the agent talk to the *model*.** Every part needs this.
 It's a **Personal Access Token** you mint once from the AmSC Model Access Gateway
 and point your agent at (Claude Code or opencode — Lab 00). It authenticates
-*you → the LLM*. Part 1 needs nothing else.
+*you → the LLM*. Part 1 needs nothing else. *Can't reach MAG?* Any Anthropic
+subscription/API key ([Lab 00 Appendix B](part1_fundamentals/00_setup_claude_mag.md#appendix-b--the-non-mag-path)),
+or — with an ALCF account — the ALCF Inference Service via `alcf-ai`
+([Lab 00 Appendix D](part1_fundamentals/00_setup_claude_mag.md#appendix-d--no-mag-point-claude-at-alcf-inference-endpoints)),
+is a drop-in model source; every lab is otherwise identical.
 
 **2. Facility tokens — let the agent's tools reach the *HPC systems*.** Only
 Part 3 needs these. Each facility authenticates as **you** via its own flow:

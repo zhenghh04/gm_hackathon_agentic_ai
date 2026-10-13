@@ -26,10 +26,25 @@ machine. When a facility fact is unclear (queue limits, modules, the proxy), cal
 1. **Generate the input locally first** and show it to the user before moving
    anything. Every HPC `run.sh` should start with `#!/bin/bash -l` (a login shell,
    so `module`/`conda` are on PATH).
-2. **Stage it** to the facility with `globus_transfer` (it reliably creates the
-   path and moves the file). A task ID is **not** a delivery — poll
-   `globus_transfer_status(task_id)` until it reports `SUCCEEDED` before you submit
-   a job that reads the staged files.
+2. **Stage it** to the facility. Four moves, in order:
+   - **Resolve the source.** Call `local_endpoint` — it autodetects this
+     machine's Globus Connect Personal collection (reads `~/.globusonline/lta/`,
+     like `globus endpoint local-id`) and returns the UUID to pass as
+     `source_endpoint`. If it errors, GCP is not set up and no upload will work,
+     so stop and point the user at the GCP setup lab. Never hardcode a local
+     endpoint UUID.
+   - **Pick a destination you own.** Stage into *your own* per-user directory
+     under the project space, not a shared root — ALCF `/<project>/<user>/…`,
+     NERSC `/pscratch/sd/<i>/<user>/…` or `/global/cfs/cdirs/<project>/<user>/…`,
+     OLCF `/ccs/home/<user>/…` or Orion scratch under your project. Confirm
+     `<project>` and `<user>` with the user — never invent them (same rule as the
+     account and queue).
+   - **Make the folder.** Call `globus_mkdir(endpoint, dir)` on the destination
+     directory. It is idempotent (an existing folder is fine) and creates
+     missing parents, so staging never fails on a missing path.
+   - **Transfer and confirm.** `globus_transfer` into that directory. A task ID
+     is **not** a delivery — poll `globus_transfer_status(task_id)` until it
+     reports `SUCCEEDED` before you submit a job that reads the staged files.
 3. **Submit.** Check `get_system_status(system)` first; stop if the system is
    down. Then `submit_job` with the account, queue, nodes, and walltime the user
    gave you — do not fill them from a default. Report the **job ID** before

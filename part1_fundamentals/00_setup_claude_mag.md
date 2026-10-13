@@ -370,6 +370,51 @@ round-trip, exactly as in Step 4 for Claude Code. Models other than the default
 
 ---
 
+## Appendix D — no MAG? Point Claude at ALCF Inference Endpoints
+
+If you can't reach MAG but you **do have an ALCF account**, the ALCF Inference
+Service is a drop-in model source. It speaks the **same Anthropic wire as MAG**,
+so only the agent-core setup below changes — the four MCP servers, the
+`submit-job` skill, and every lab/example are **identical**.
+
+ALCF ships two CLIs for this (`alcf-tokens` and `alcf-ai`). The `alcf-ai`
+configurator **writes `~/.claude/settings.json` for you**, so you mint no PAT and
+hand-edit no JSON:
+
+```bash
+# clone / venv / pip — same as Steps 1 above, then instead of the MAG PAT:
+alcf-tokens login                     # browser login: "Argonne LCF"
+alcf-tokens test-token inference      # -> {"ready": true, "error": null}
+uvx alcf-ai agent configure claude    # writes ~/.claude/settings.json for you
+#                                       (or: uvx alcf-ai agent configure opencode)
+claude
+```
+
+`test-token inference` is the one check that your inference token works. After
+`alcf-ai agent configure claude`, launch `claude` and run the same
+[Step 4](#step-4--verify-the-round-trip) verification message — the reply now
+comes back through ALCF Inference instead of MAG.
+
+**Prove the endpoint directly (no agent needed).** The same token the agent uses
+also works from `curl`; if this returns a reply, the endpoint is healthy and the
+agent will reach it too:
+
+```bash
+token=$(alcf-tokens get-token inference)
+curl -H "Authorization: Bearer $token" \
+     -H "Content-Type: application/json" \
+     -d '{"model": "gpt-oss-120b",
+          "messages": [{"role": "user", "content": "hello!"}]}' \
+  https://inference-api.alcf.anl.gov/resource_server/metis/api/v1/chat/completions | jq
+```
+
+> Needs an ALCF account. Setup guide:
+> <https://docs.alcf.anl.gov/services/inference-endpoints>. MAG and ALCF
+> Inference are two token sources for the identical workflow — pick whichever you
+> can reach.
+
+---
+
 **Next:** [Lab 01 — The 101: drive a small local simulation →](01_local_simulation.md)
 
 ---

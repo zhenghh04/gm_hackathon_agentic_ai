@@ -78,9 +78,9 @@
 % ---------------------------------------------------------------- metadata
 \newcommand{\deckauthor}{Huihuo Zheng}
 \newcommand{\deckemail}{huihuo.zheng@anl.gov}
-\newcommand{\deckinstitute}{Argonne Leadership Computing Facility (ALCF)}
+\newcommand{\deckinstitute}{AmSC AI Services\\Argonne Leadership Computing Facility\\Argonne National Laboratory}
 \title{Hands-On: Agentic AI for AmSC}
-\date{October 2026}
+\date{October 14, 2026}
 
 % ---------------------------------------------------------------- logo
 % The deck carries no institutional mark: the title slide is text-only. There
@@ -181,8 +181,10 @@
   % the frame subtitle. \vfill first keeps the title block safe.
   \vfill
   {\usebeamerfont{title}\usebeamercolor[fg]{title}\Large\bfseries
-    Genesis Hands-On: Agentic workflows with MAG and IRI \par}
-  \vspace{5pt}
+    Building Agentic Workflows with AmSC MAG and IRI \par}
+  \vspace{6pt}
+  {\usebeamerfont{subtitle}\color{accentteal}\large
+    Genesis October Hackathon \par}
   \vspace{14pt}
   {\small
     \deckauthor\\
@@ -190,13 +192,9 @@
     \insertdate}
   \vfill
   {\footnotesize\color{midgray}\faEnvelope[regular]\ \deckemail
-   \hfill\texttt{github.com/zhenghh04/amsc\_agentic\_ai}\par}
+   \hfill\texttt{github.com/zhenghh04/gm\_hackathon\_agentic\_ai}\par}
 \end{frame}
 }
-
-% ================================================================================
-\section{Automation with agents}
-% ================================================================================
 
 % ---------------------------------------------------------------- THE SPINE
 % ---------------------------------------------------------------- PROBLEM
@@ -260,25 +258,14 @@
       -| node[pos=0.25,below,font=\tiny\itshape,text=midgray]
       {repeat until done} (model.south);
   \end{tikzpicture}
-  \par\vspace{10pt}
-  \begin{columns}[T,totalwidth=\textwidth]
-    \begin{column}{0.47\textwidth}
-      \sechead{labnavy}{\faCode\ You can read the whole thing}
-      \scriptsize The whole loop is about twenty lines against MAG's
-      chat-completions endpoint. Claude Code and opencode are this loop,
-      hardened.
-    \end{column}
-    \begin{column}{0.06\textwidth}\end{column}
-    \begin{column}{0.47\textwidth}
-      \sechead{accentteal}{\faWrench\ The loop is the easy part}
-      \scriptsize The value is in \emph{which} tools the model can reach ---
-      and whether they are safe to hand it.
-    \end{column}
-  \end{columns}
+  \par\vspace{6pt}
+  {\small A chatbot only \emph{answers}; this loop lets the model \textbf{act} ---
+   call a tool, observe the result, decide again. That is the shift from
+   chatbot to agent.}
 \end{frame}
 
 % ---------------------------------------------------------------- MCP
-\begin{frame}{MCP is how the agent reaches a facility by name, not by URL}
+\begin{frame}{Model Context Protocol (MCP): how the agent reaches a facility through APIs}
   \begin{columns}[c, totalwidth=\textwidth]
     \begin{column}{0.44\textwidth}
       \centering
@@ -292,7 +279,7 @@
           {\faPlug\ \textbf{MCP server}\\[1pt]\tiny\normalfont named tools\\[-1pt]
            \tiny + JSON schemas};
         \node[toolnode=labnavy, text width=2.9cm] (svc) at (0,0)
-          {\faServer\ \textbf{Facility services}\\[1pt]
+          {\faServer\ \textbf{HPC Facilities}\\[1pt]
            \tiny\normalfont IRI, Globus, docs};
 
         % Arrows sit inboard of x=+-0.55 so a label hung off their outer side
@@ -304,7 +291,7 @@
           -- node[right,font=\tiny,text=midgray,inner sep=2pt]{call}
           ($(agent.south)+(0.55,0)$);
         \draw[flow=labnavy] ($(mcp.south)+(-0.3,0)$)
-          -- node[right,font=\tiny,text=midgray,inner sep=3pt]{HTTPS + token}
+          -- node[right,font=\tiny,text=midgray,inner sep=3pt]{REST API + token}
           ($(svc.north)+(-0.3,0)$);
       \end{tikzpicture}
     \end{column}
@@ -313,8 +300,9 @@
       \sechead{labnavy}{\faQuestionCircle\ What MCP buys you}
       \scriptsize
       \begin{itemize}\setlength\itemsep{2.5pt}
-        \item[\faSearch] \textbf{Discovered.} The agent asks the server what it
-          can do --- no endpoints, no hand-built payloads.
+        \item[\faSearch] \textbf{Discovered.} The server wraps the facility's
+          REST API as named tools; the agent asks what it can do --- no URLs,
+          no hand-built payloads.
         \item[\faCheckCircle] \textbf{Typed.} One schema per tool, so bad
           arguments fail \emph{before} a job runs.
         \item[\faUserShield] \textbf{Scoped by you.} The server holds the
@@ -326,12 +314,11 @@
   \end{columns}
 \end{frame}
 
-% ================================================================================
-\section{Building blocks}
-% ================================================================================
-
 % ---------------------------------------------------------------- THE FOUR SERVERS
-\begin{frame}{Four MCP servers give the agent knowledge, reach, and data movement}
+% No \section divider here: the metropolis theme emits a standout section page
+% for every \section, and the "Building blocks" one was cut. The section name
+% now lives in this frame's title instead.
+\begin{frame}{Building blocks: Agent core (MAG), knowledge base, IRI MCP}
   \centering
   \begin{tikzpicture}[line width=0.85pt]
     % The tool column is CHAINED (below=3mm of <prev>), not positioned by
@@ -378,28 +365,42 @@
 % The right panel is the PAT-acquisition path. It deliberately does NOT carry
 % the settings.json blob: at 0.44\textwidth the longest line of that JSON wraps
 % and stops being copy-pasteable, so it gets the full-width slide that follows.
-\begin{frame}[fragile]{Agent core: three variables point your agent at MAG}
+\begin{frame}[fragile]{MAG: Model Access Gateway to frontier models}
   \begin{columns}[T,totalwidth=\textwidth]
     \begin{column}{0.54\textwidth}
-      \codetag{\faTerminal\ Claude Code --- Anthropic wire}
-\begin{lstlisting}[style=shell]
-export ANTHROPIC_BASE_URL=\
-https://i2-api.genesis.american-science-cloud.org
-export ANTHROPIC_AUTH_TOKEN=$AMSC_I2_API_KEY
-export ANTHROPIC_MODEL=claude-sonnet-4-6
-claude
-\end{lstlisting}
-      \codetag[accentteal]{\faRobot\ opencode --- OpenAI wire, note the /v1}
-\begin{lstlisting}[style=shell]
-# opencode.jsonc already sets:
-#   baseURL .../american-science-cloud.org/v1
-read -rs AMSC_I2_API_KEY; export AMSC_I2_API_KEY
-opencode
-\end{lstlisting}
+      \centering
+      \begin{tikzpicture}[line width=0.85pt]
+        \node[agentnode, text width=1.6cm] (agent) at (0,0)
+          {\faRobot\ \textbf{Your agent}\\[1pt]\tiny\normalfont + PAT};
+        \node[toolnode=accentgold, text width=1.7cm] (mag) at (2.4,0)
+          {\faComments\ \textbf{MAG}\\[1pt]\tiny\normalfont one auth,\\[-1pt]
+           \tiny one budget};
+        \node[toolnode=midgray, text width=1.7cm] (p1) at (4.9,1.5)
+          {\tiny\normalfont Anthropic};
+        \node[toolnode=midgray, text width=1.7cm] (p2) at (4.9,0.5)
+          {\tiny\normalfont OpenAI};
+        \node[toolnode=midgray, text width=1.7cm] (p3) at (4.9,-0.5)
+          {\tiny\normalfont Gemini};
+        \node[toolnode=midgray, text width=1.7cm] (p4) at (4.9,-1.5)
+          {\tiny\normalfont Azure};
+
+        \draw[flow=accentgold] (agent.east) -- (mag.west);
+        \draw[flow=midgray] (mag.east) to[bend left=16]  (p1.west);
+        \draw[flow=midgray] (mag.east) to[bend left=5]   (p2.west);
+        \draw[flow=midgray] (mag.east) to[bend right=5]  (p3.west);
+        \draw[flow=midgray] (mag.east) to[bend right=16] (p4.west);
+      \end{tikzpicture}
+      \par\vspace{8pt}
+      \scriptsize
+      The \textbf{Model Access Gateway} is one public-cloud endpoint that fronts
+      every model AmSC exposes behind \textbf{one auth layer, one budget, and one
+      catalog}. Your \textbf{PAT} replaces every provider API key --- usage is
+      billed to your project, with no VPN, no personal key, and no credit card.
     \end{column}
     \begin{column}{0.02\textwidth}\end{column}
     \begin{column}{0.44\textwidth}
-      \sechead{accentgold}{\faKey\ Where to get your PAT}
+      \sechead{accentgold}{\faKey\ Where to get your PAT\\
+        {\footnotesize\normalfont (Personal Access Token)}}
       \scriptsize
       \begin{itemize}\setlength\itemsep{3pt}
         \item[\textbf{1.}] Log in to\\
@@ -416,22 +417,130 @@ opencode
 \end{frame}
 
 % ---------------------------------------------------------------- SETTINGS.JSON
-% Full width on purpose: the ANTHROPIC_BASE_URL line is ~78 characters and must
-% stay on one line to be copy-pasteable. Do not move this into a column.
+% Full width on purpose: the ANTHROPIC_BASE_URL line must stay on one line to be
+% copy-pasteable. Do not move this into a column.
+%
+% HOST: mag.genesis.americansciencecloud.org -- verified live 2026-10-13
+% (GET /v1/models -> HTTP 401, i.e. reachable and asking for a token). The old
+% i2-api.genesis.american-science-cloud.org now answers 404 on that route; note
+% the domain itself also lost its hyphens. Transcribed from a working local
+% config, minus that machine's personal proxy + UI-preference keys.
+%
+% ANTHROPIC_MODEL / _DEFAULT_SONNET_ / _DEFAULT_OPUS_ are deliberately absent:
+% the working config does not set them, so do not re-add model pins unless you
+% have confirmed those exact IDs against MAG's live /v1/models catalogue.
 \begin{frame}[fragile]{Set it once: \texttt{\textasciitilde/.claude/settings.json}}
   \codetag{\faFileCode\ paste your token where \texttt{YOUR\_PAT\_HERE} is --- then every shell inherits it}
 \begin{lstlisting}[style=plainsnip]
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "https://i2-api.genesis.american-science-cloud.org",
+    "ANTHROPIC_BASE_URL": "https://mag.genesis.americansciencecloud.org",
     "ANTHROPIC_AUTH_TOKEN": "YOUR_PAT_HERE",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6"
+    "ANTHROPIC_CUSTOM_HEADERS": "X-AmSC-MAG-Provider: amazon"
   },
   "model": "opus"
 }
 \end{lstlisting}
+  \codetag[accentgold]{\faGlobe\ depending on where you sit, MAG may need your
+    lab \textbf{VPN} or an \textbf{HTTP(S) proxy} --- check with
+    \texttt{curl -i https://mag.genesis.americansciencecloud.org/v1/models}}
+  {\scriptsize A \textbf{401} means you reached the gateway and it just wants
+   your PAT --- that is the \emph{good} answer. A hang or TLS error is the
+   network, not the token: connect the VPN, or set \texttt{HTTPS\_PROXY}.}
+\end{frame}
+
+% ---------------------------------------------------------------- CODEX CONFIG
+% Codex reaches MAG over the OpenAI wire (/v1), so it needs a custom
+% model_provider block -- NOT the ANTHROPIC_* vars of the Claude slide.
+%
+% Grounded in MAG's own user guide (i2-platform/docs/i2-mag-user-guide.md and
+% docs/improvements/2026-08-24-mag-provider-header.md), checked 2026-10-13:
+%   * env_key is still AMSC_I2_API_KEY -- the name is branded on "i2", not on
+%     the retired i2-api hostname, so the host move did NOT rename it.
+%   * Canonical model form is <base>[-effort][-flex][-compressed][@provider].
+%     The @provider suffix is a real deployment name: it picks the routing
+%     target AND the VO allocation bucket, so it is a billing decision.
+%   * X-AmSC-MAG-Provider is the *equivalent* of the suffix, for clients that
+%     hard-code a model name. An explicit @provider in the model string WINS
+%     and the header is ignored. Hence: Claude Code (hard-codes model IDs) uses
+%     the header; Codex can set the model string, so it pins with the suffix.
+% gpt-5-codex is NOT guaranteed on MAG -- do not promise it to attendees, and
+% re-check exact model IDs against /v1/models before the session.
+\begin{frame}[fragile]{\ldots and for Codex: \texttt{\textasciitilde/.codex/config.toml}}
+  \codetag[accentteal]{\faFileCode\ Codex speaks the OpenAI wire --- point it at MAG's \texttt{/v1} with a custom provider}
+\begin{lstlisting}[style=plainsnip]
+model = "gpt-5@openai"
+model_provider = "amsc"
+
+[model_providers.amsc]
+name     = "AmSC MAG"
+base_url = "https://mag.genesis.americansciencecloud.org/v1"
+env_key  = "AMSC_I2_API_KEY"
+wire_api = "chat"
+\end{lstlisting}
+  \codetag{\faTerminal\ same PAT, same gateway --- only the wire differs; \texttt{@openai} pins the provider \emph{and} the allocation bucket it bills}
+\begin{lstlisting}[style=shell]
+export AMSC_I2_API_KEY=YOUR_PAT_HERE
+codex
+\end{lstlisting}
+\end{frame}
+
+% The "Beyond the CLI: the OpenAI Agents API, pointed at MAG" frame lived here
+% (SDK -> adapter shim -> MAG Responses API, plus the amsc-mag-agents-api-adapter
+% link). Removed 2026-10-13 at the author's request -- "for now", so expect it
+% back. It was NEVER committed, so git history does not have it: the only copy
+% is slides/parked/agents_api_frame.tex. Restore with
+%   \input{parked/agents_api_frame}
+% right here, or paste the file's contents back in.
+%
+% ---------------------------------------------------------------- KNOWLEDGE / ASKALCF
+% The knowledge leg. Content ported from SES 2026 Session-05
+% (05_Agentic_Workflows), "Group 1 -- ALCF Knowledge base (no token)". The
+% `knowledge` server in this repo (mcp/knowledge/docs_server.py) is a CLIENT of
+% ALCF's public server at https://ask.alcf.anl.gov/mcp and re-exposes its one
+% tool, retrieve_alcf_docs -- no token, no account. Keep ASK_ALCF and the tool
+% name exact: attendees watch for this call in the transcript.
+\begin{frame}[fragile]{The knowledge leg: ask the facility's own docs}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \begin{column}{0.50\textwidth}
+      \codetag[accentteal]{\faBookOpen\ mcp/knowledge/docs\_server.py --- a server that is a client}
+\begin{lstlisting}[style=pysnip]
+ASK_ALCF = "https://ask.alcf.anl.gov/mcp"
+
+@mcp.tool()
+async def retrieve_alcf_docs(query, top_k=3):
+    # we are a CLIENT of ALCF's public server
+    async with Client(ASK_ALCF) as up:
+        return await up.call_tool(
+            "retrieve_alcf_docs",
+            {"query": query, "top_k": top_k})
+\end{lstlisting}
+      {\scriptsize\color{midgray}Already the \texttt{knowledge} server in
+       \texttt{.mcp.json} --- the URL is the entire configuration.}
+    \end{column}
+    \begin{column}{0.04\textwidth}\end{column}
+    \begin{column}{0.46\textwidth}
+      {\small\color{labnavy}\bfseries \faGlobe\ What it knows\hfill
+        \IfFileExists{logos/icon_askalcf.png}{%
+          \raisebox{-0.28cm}{\includegraphics[height=0.78cm]{logos/icon_askalcf.png}}%
+          \hspace{2pt}AskALCF}{}}%
+      \par\vspace{1.5pt}{\color{labnavy!45}\rule{\linewidth}{0.6pt}}\par\vspace{4pt}
+      \scriptsize
+      \begin{itemize}\setlength\itemsep{2.5pt}
+        \item[\faServer] ALCF, OLCF, NERSC \& LLNL docs --- plus PBS, Slurm,
+          CUDA, HIP, oneAPI, SYCL, OpenMP.
+        \item[\faKey] \textbf{No token, no account.} It answers before you have
+          logged in to any facility.
+        \item[\faRandom] A server that is a \emph{client} --- one
+          \texttt{.mcp.json} entry, and it routes around the Cloudflare edge
+          (which 403s Node \texttt{fetch} but lets Python's HTTP stack through).
+      \end{itemize}
+      \vspace{3pt}
+      {\scriptsize\color{midgray}Ask a facility question and watch for the
+       \texttt{retrieve\_alcf\_docs} call --- no call means training data, not
+       live docs.}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------- IRI
@@ -534,67 +643,190 @@ description: Stage inputs, run an IRI batch
     --- the skill is where it lives, not the prompt.}
 \end{frame}
 
+% ---------------------------------------------------------------- SOURCE MAP
+% Modelled on the SES 2026 Session-05 "one server, three tool groups" slide: a
+% file tree on the left, what the pattern buys you on the right. The tree and
+% the tool counts are REAL -- `grep -c '^@mcp.tool' <server>.py` on this repo.
+% Re-count them if a server gains or loses a tool; attendees read this slide
+% and then open these exact paths.
+\begin{frame}[fragile]{The key source files: four servers and one skill}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \begin{column}{0.53\textwidth}
+      \codetag{\faFolderOpen\ what you cloned}
+% keepspaces: the deck-wide `plainsnip' style is columns=fullflexible, which
+% COLLAPSES the padding spaces and destroys the annotation column. Keep these
+% two overrides if you edit the tree, and keep lines under ~42 characters --
+% at 43+ they overflow the 0.53 column and listings will not wrap them.
+\begin{lstlisting}[style=plainsnip, columns=flexible, keepspaces=true]
+gm_hackathon_agentic_ai/
+ .mcp.json             4 servers, one file
+ mcp/
+  auth_env.py          tokens, Globus id
+  knowledge/
+   docs_server.py       1 tool  AskALCF
+  hpc/
+   alcf_server.py      23 tools Polaris
+   nersc_server.py     20 tools Perlmutter
+   olcf_iri_server.py  17 tools Frontier
+   *_iri_client.py     REST + Globus calls
+ .claude/skills/
+  submit-job/SKILL.md  the chain
+ scripts/auth/         one login per site
+\end{lstlisting}
+    \end{column}
+    \begin{column}{0.02\textwidth}\end{column}
+    \begin{column}{0.45\textwidth}
+      \sechead{labnavy}{\faSitemap\ The shape to copy}
+      \scriptsize
+      \begin{itemize}\setlength\itemsep{3pt}
+        \item[\faPlug] \textbf{Server declares, client calls.}
+          \texttt{*\_server.py} is tool names and schemas;
+          \texttt{*\_iri\_client.py} does the HTTP and Globus work.
+        \item[\faKey] \textbf{Auth lives in one file.}
+          \texttt{auth\_env.py} reads \texttt{.env}, and resolves your laptop's
+          Globus collection for \texttt{local\_endpoint}.
+        \item[\faClone] \textbf{Three facilities, one shape.} Same tool names
+          on \texttt{alcf} / \texttt{nersc} / \texttt{olcf} --- learn one, use
+          all three.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \small
+  \takeaway[accentteal]{Two folders, the whole system}{%
+    --- \texttt{mcp/} for reach, \texttt{.claude/skills/} for judgment.}
+\end{frame}
+
 % ================================================================================
 \section{Hands-on}
 % ================================================================================
 
 % ---------------------------------------------------------------- STEP 1
+% Three platforms, one flow. The per-OS lines are the ONLY ones that differ --
+% they match Lab 00's "Platform note" section (macOS/Linux/WSL vs native
+% Windows), so the slide and the lab cannot drift. Two accuracy notes:
+%   - Read-Host -MaskInput is PowerShell 7.1+; on Windows PowerShell 5.1 the
+%     bare Read-Host echoes. Said on the slide rather than silently shown.
+%   - Native Windows settings.json lives at %USERPROFILE%\.claude\, but under
+%     WSL it is ~/.claude/ INSIDE the distro -- the usual "I edited the wrong
+%     file" failure.
 \begin{frame}[fragile]{Step 1: clone, configure, and prove the model answers}
   \begin{columns}[T,totalwidth=\textwidth]
     \begin{column}{0.55\textwidth}
-      \codetag{\faTerminal\ run these in order}
+      \codetag{\faApple\,\faLinux\ macOS / Linux / WSL}
 \begin{lstlisting}[style=shell]
 git clone https://github.com/zhenghh04/\
-amsc_agentic_ai.git
-cd amsc_agentic_ai
-python -m venv .venv && . .venv/bin/activate
+gm_hackathon_agentic_ai.git
+cd gm_hackathon_agentic_ai
+python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-
-# paste your MAG PAT without echoing it
-read -rs AMSC_I2_API_KEY; export AMSC_I2_API_KEY
-
+read -rs AMSC_I2_API_KEY   # PAT, no echo
+export AMSC_I2_API_KEY
 claude          # ...or: opencode
+\end{lstlisting}
+      \codetag[accentgold]{\faWindows\ native Windows (PowerShell) --- only
+        these lines differ}
+\begin{lstlisting}[style=shell]
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+$env:AMSC_I2_API_KEY = Read-Host 'PAT'
 \end{lstlisting}
     \end{column}
     \begin{column}{0.03\textwidth}\end{column}
     \begin{column}{0.42\textwidth}
-      \sechead{labnavy}{\faInfoCircle\ what each line buys you}
+      \codetag{\faFileCode\ \texttt{\textasciitilde/.claude/settings.json}}
+\begin{lstlisting}[style=plainsnip, basicstyle=\ttfamily\tiny\color{labink}, breaklines=true]
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://mag.genesis.americansciencecloud.org",
+    "ANTHROPIC_AUTH_TOKEN": "YOUR_PAT_HERE",
+    "ANTHROPIC_CUSTOM_HEADERS": "X-AmSC-MAG-Provider: amazon"
+  },
+  "model": "opus"
+}
+\end{lstlisting}
+      {\tiny\color{midgray}Set once, every shell inherits it --- then Lab 00's
+       round-trip check confirms the model answers.\par\vspace{3pt}
+       \faWindows\ Native Windows: \texttt{\%USERPROFILE\%\textbackslash.claude\textbackslash settings.json}.
+       Under WSL it is \texttt{\textasciitilde/.claude/} \emph{inside} the
+       distro --- pick one and stay there.\par\vspace{2pt}
+       \faExclamationTriangle\ Add \texttt{-MaskInput} to hide the PAT ---
+       PowerShell 7.1+ only.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- GLOBUS CONNECT PERSONAL
+% Ported from the SES 2026 deck's "Step 2: Globus data transfer" slide, with the
+% architecture guidance CORRECTED. The SES note implied the uname-m warning marks
+% Arm Linux; it does not. Verified against globusconnectpersonal-3.3.1 (memory
+% globus-gcp-arch-support): the Linux tarball ships gt_amd64 ONLY --
+%   - x86_64  -> ARCH=amd64 (supported; x86_64 and amd64 are the same arch)
+%   - the "uname -m = arm64" warning is the *) fallthrough and means macOS on
+%     Apple Silicon ran the Linux tarball; the fix there is the universal .dmg.
+% (Arm Linux / aarch64 guidance intentionally dropped per author -- not the
+% hackathon audience; the amd64==x86_64 point is the one that bit users.)
+\begin{frame}[fragile]{Globus Connect Personal: your laptop as a transfer endpoint}
+  \codetag{\faLinux\ Linux \texttt{x86\_64} (same thing as \texttt{amd64}) --- download, set up, start}
+\begin{lstlisting}[style=shell]
+GCP=https://downloads.globus.org/globus-connect-personal/linux/stable
+wget $GCP/globusconnectpersonal-latest.tgz && tar xzf globusconnect*.tgz
+cd globusconnectpersonal-*/ && ./globusconnectpersonal   # guided setup
+./globusconnectpersonal -start &                         # then: -status
+\end{lstlisting}
+  \vspace{3pt}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \begin{column}{0.57\textwidth}
+      \sechead{accentgold}{\faMicrochip\ Which build? --- the usual confusion}
       \scriptsize
       \begin{itemize}\setlength\itemsep{2.5pt}
-        \item[\faDownload] \texttt{requirements.txt} --- the MCP servers'
-          dependencies. Skip it and every server fails to start.
-        \item[\faKey] The PAT is your \emph{only} credential for the model.
-        \item[\faCheckCircle] Lab 00 ends with a round-trip check. Do it
-          before anything else fails confusingly.
+        \item[\faLinux] \texttt{x86\_64} \textbf{and} \texttt{amd64} name the
+          \emph{same} arch --- the only Linux build. \texttt{uname -m} prints
+          \texttt{x86\_64}.
+        \item[\faApple] \textbf{Apple Silicon Mac:} install the universal
+          \texttt{.dmg}, \emph{not} the Linux tarball. A \texttt{uname -m = arm64}
+          warning means you grabbed the Linux build on a Mac.
       \end{itemize}
+    \end{column}
+    \begin{column}{0.03\textwidth}\end{column}
+    \begin{column}{0.40\textwidth}
+      \sechead{labnavy}{\faFolderOpen\ Before you share}
+      \scriptsize The default collection exposes your \emph{whole home
+      directory}, read-write. Narrow it in
+      \texttt{\textasciitilde/.globusonline/lta/config-paths}.\par
+      \vspace{4pt}
+      {\color{midgray}\faQuestionCircle\ Docs:
+       \texttt{globus.org/globus-connect-personal}}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------- STEP 2
-\begin{frame}[fragile]{Step 2: one Globus login mints the facility tokens}
-  \codetag{\faKey\ the transfer scope, in a single browser round trip}
+\begin{frame}[fragile]{Step 2: one login per facility mints the IRI tokens}
+  \codetag{\faKey\ browser logins --- each writes its token into \texttt{.env}}
 \begin{lstlisting}[style=shell]
-python scripts/auth/globus_auth.py authenticate   # browser -> paste the code back
-python scripts/auth/alcf_auth.py authenticate     # ALCF IRI
+python scripts/auth/globus_auth.py     authenticate  # Globus Transfer (all)
+python scripts/auth/alcf_iri_token.py  authenticate  # ALCF  -> IRI_TOKEN_ALCF
+python scripts/auth/nersc_iri_token.py authenticate  # NERSC -> IRI_TOKEN_NERSC (nersc.gov id)
 \end{lstlisting}
   \vspace{2pt}
-  \codetag[accentteal]{\faCheckCircle\ then prove it, before you need it}
+  \codetag[accentgold]{\faExclamationTriangle\ OLCF has no browser flow --- paste a portal token}
 \begin{lstlisting}[style=shell]
-/mcp        # in the agent: all four servers, and their tools
+# my.olcf.ornl.gov -> Projects -> API Tokens  (enable the COMPUTE scope!)
+echo "IRI_TOKEN_OLCF=<paste-the-token>" >> .env
 \end{lstlisting}
-  \vspace{4pt}
+  \vspace{3pt}
   \begin{columns}[T,totalwidth=\textwidth]
     \begin{column}{0.48\textwidth}
       \sechead{labnavy}{\faInfoCircle\ Where the tokens go}
-      \scriptsize They are written to the project credentials file that the
-      MCP servers read on every call --- never into the model's context.
+      \scriptsize Into \texttt{.env}, re-read on every MCP call --- never into
+      the model's context. Rotate one and the next call picks it up.
     \end{column}
     \begin{column}{0.04\textwidth}\end{column}
     \begin{column}{0.48\textwidth}
-      \sechead{accentgold}{\faExclamationTriangle\ One login per service}
-      \scriptsize \texttt{globus\_auth.py} covers Globus \emph{transfer};
-      each facility's IRI token is its own short login.
+      \sechead{accentteal}{\faCheckCircle\ then prove it}
+      \scriptsize \texttt{/mcp} in the agent lists all four servers. Only do
+      the facilities you have --- a missing token just reports ``not
+      authenticated''.
     \end{column}
   \end{columns}
 \end{frame}
@@ -685,89 +917,85 @@ read_file(path=".../job.out", tail=40)
 \end{frame}
 
 % ---------------------------------------------------------------- EXAMPLE 3
-% The payoff slide: the Lab 02 MNIST trainer, unmodified, on a Polaris GPU.
-% Deliberately prints no accuracy number --- the deck must not claim a result
-% nobody measured in the room.
-\begin{frame}[fragile]{Example 3: the Lab 02 MNIST trainer, unchanged, on a Polaris GPU}
+% The payoff slide: ONE sentence, no pre-existing code --- the agent writes the
+% MNIST trainer itself, then stages/submits/monitors on a Perlmutter GPU.
+% The right panel shows an ILLUSTRATIVE job.out tail (epoch accuracy), labeled
+% as such --- it demonstrates the retrieved output, not a specific measured run.
+\begin{frame}[fragile]{Example 3: one sentence $\rightarrow$ a MNIST job on a Perlmutter GPU}
   \begin{chatbubble}{labnavy}{\faUser\ You}
-    \scriptsize ``Run my MNIST trainer from Lab 02 on one Polaris GPU node ---
-    debug queue, 15 minutes, charged to my account. Stage it, submit it, watch
-    it, and show me the final test accuracy it actually printed.''
+    \scriptsize ``Please run a MNIST training on Perlmutter using
+    \texttt{<ALLOCATION>} on 1 node, debug queue.''
   \end{chatbubble}
   \vspace{3pt}
   \begin{columns}[T,totalwidth=\textwidth]
     \begin{column}{0.54\textwidth}
-      \codetag{\faCode\ stage $\rightarrow$ submit $\rightarrow$ monitor $\rightarrow$ retrieve}
+      \codetag{\faCode\ write $\rightarrow$ stage $\rightarrow$ submit $\rightarrow$ monitor}
 \begin{lstlisting}[style=pysnip]
-globus_transfer(src="train.py",
-  dst="/eagle/<project>/<you>/mnist/")
-globus_transfer_status(task_id=...)  # SUCCEEDED
-list_projects()              # resolve the account
-submit_job(system="polaris", nodes=1,
-           queue="debug", walltime="00:15:00",
-           script_path=".../run.sh")
-get_job_status(job_id=...)   # poll with backoff
+# from one sentence, the agent writes code:
+Write("train.py")  # PyTorch MNIST, GPU-ready
+Write("run.sh")    # #!/bin/bash -l, module load
+globus_mkdir(dst=".../mnist/")   # make folder
+globus_transfer(src="train.py", dst=
+  "/pscratch/sd/<u>/<you>/mnist/")
+globus_transfer_status(task_id=...) # SUCCEEDED
+submit_job(system="perlmutter", nodes=1,
+  queue="debug", walltime="00:15:00",
+  account="<ALLOCATION>")
+get_job_status(job_id=...)  # poll, backoff
 read_file(path=".../job.out", tail=20)
 \end{lstlisting}
     \end{column}
     \begin{column}{0.03\textwidth}\end{column}
     \begin{column}{0.43\textwidth}
-      \sechead{accentteal}{\faRocket\ Same spine, bigger machine}
-      \scriptsize
-      \begin{itemize}\setlength\itemsep{1.5pt}
-        \item[\faLaptop] The \emph{same} \texttt{train.py} Lab 02 wrote on your
-          laptop. CPU to A100, no rewrite --- only \texttt{run.sh} is new.
-        \item[\faFileCode] \texttt{run.sh} opens with \texttt{\#!/bin/bash -l}
-          --- the login shell that puts \texttt{module} and conda on
-          \texttt{PATH}. Without it the job dies at exit 127.
-        \item[\faEye] A transfer task ID is not a delivery --- poll it to
-          \texttt{SUCCEEDED} before the job reads the file.
-      \end{itemize}
+      \sechead{accentteal}{\faChartLine\ What the job printed}
+\begin{lstlisting}[style=plainsnip]
+Epoch 1/5  loss 0.42  acc 95.1%
+Epoch 2/5  loss 0.15  acc 97.3%
+Epoch 3/5  loss 0.10  acc 98.0%
+Epoch 4/5  loss 0.07  acc 98.4%
+Epoch 5/5  loss 0.05  acc 98.6%
+Final test accuracy: 98.6%
+\end{lstlisting}
+      {\tiny\color{midgray}Illustrative \texttt{job.out} tail --- numbers vary
+       run to run.}
     \end{column}
   \end{columns}
 \end{frame}
 
-% ================================================================================
-\section{Where this goes}
-% ================================================================================
-
 % ---------------------------------------------------------------- TAKE IT HOME
-\begin{frame}{Take it home}
+\begin{frame}{Take it home: now run your own workload}
   \begin{columns}[T,totalwidth=\textwidth]
-    \begin{column}{0.47\textwidth}
-      \sechead{accentteal}{\faRocket\ What you can do tomorrow}
+    \begin{column}{0.50\textwidth}
+      \sechead{labnavy}{\faCheckCircle\ What you just did}
       \scriptsize
-      \begin{itemize}\setlength\itemsep{3pt}
-        \item[\faPlug] Point the same four servers at \emph{your} allocation
-          --- nothing in them is tutorial-specific.
-        \item[\faFileCode] Write one skill for your group's conventions. It is
-          a markdown file.
-        \item[\faRobot] Hand a colleague \texttt{opencode.jsonc} if they have
-          no Claude access. Same labs.
+      \begin{itemize}\setlength\itemsep{4pt}
+        \item[\faComments] Pointed one agent at every model through MAG.
+        \item[\faServer] Reached three facilities by name through four MCP
+          servers.
+        \item[\faRocket] Staged, submitted, and monitored a real HPC job ---
+          from one sentence.
       \end{itemize}
     \end{column}
-    \begin{column}{0.06\textwidth}\end{column}
-    \begin{column}{0.47\textwidth}
-      \sechead{labnavy}{\faUserShield\ What to keep doing}
+    \begin{column}{0.04\textwidth}\end{column}
+    \begin{column}{0.46\textwidth}
+      \sechead{accentteal}{\faRocket\ Now do it with your own}
       \scriptsize
-      \begin{itemize}\setlength\itemsep{3pt}
-        \item[\faEye] Watch the tool calls, not just the prose. The calls are
-          the part that is true.
-        \item[\faCheckCircle] Verify with \texttt{/mcp} before you debug
-          anything else.
-        \item[\faKey] Keep the token in the server. The model never needs it.
-      \end{itemize}
+      Swap the MNIST example for \emph{your} code, \emph{your} allocation,
+      \emph{your} queue --- nothing here is tutorial-specific. Point the same
+      servers at your project and run the workload you actually came with.
     \end{column}
   \end{columns}
   \vspace{7pt}
   \begin{center}
     {\small\color{midgray}\faGithub\
-     \texttt{github.com/zhenghh04/amsc\_agentic\_ai}
+     \texttt{github.com/zhenghh04/gm\_hackathon\_agentic\_ai}
      \quad\textperiodcentered\quad \faEnvelope[regular]\ \deckemail}
   \end{center}
 \end{frame}
 
 % ---------------------------------------------------------------- ACKNOWLEDGEMENT
+% The SES reference that used to sit here moved to the LAST backup slide, at the
+% end of the appendix -- see "References" after the ALCF-inference backups.
 \begin{frame}[plain]{Acknowledgement}
   \vfill
   \begin{center}
@@ -778,6 +1006,99 @@ read_file(path=".../job.out", tail=20)
     facility at Argonne National Laboratory and is based on research
     supported by the U.S.\ DOE Office of Science-Advanced Scientific
     Computing Research Program, under Contract No.\ DE-AC02-06CH11357.
+  \end{minipage}
+  \end{center}
+  \vfill
+\end{frame}
+
+% ================================================================================
+\appendix
+\section{Backup}
+% ================================================================================
+
+% ---------------------------------------------------------------- BACKUP: ALCF INFERENCE
+% Fallback for attendees who cannot reach MAG. Swap ONLY the agent-core setup:
+% the ALCF Inference Service speaks the same Anthropic wire as MAG, so the four
+% MCP servers, the submit-job skill, and Examples 1-3 are all UNCHANGED. Recipe
+% taken from the Service Enabled Sciences deck + 03_ALCF_Inference_Service /
+% 05_Agentic_Workflows README: `alcf-tokens login` -> `test-token inference` ->
+% `uvx alcf-ai agent configure claude`, which WRITES ~/.claude/settings.json for
+% you (so we deliberately do not hand-quote an endpoint URL/model here).
+\begin{frame}[fragile]{Backup: no MAG? Point Claude at ALCF Inference Endpoints}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \begin{column}{0.55\textwidth}
+      \codetag{\faTerminal\ instead of the MAG PAT in Step 1}
+\begin{lstlisting}[style=shell]
+# clone / venv / pip --- same as Step 1, then:
+alcf-tokens login        # browser: "Argonne LCF"
+alcf-tokens test-token inference
+# {"ready": true, "error": null}
+uvx alcf-ai agent configure claude
+# ...or: configure opencode
+claude
+\end{lstlisting}
+    \end{column}
+    \begin{column}{0.03\textwidth}\end{column}
+    \begin{column}{0.42\textwidth}
+      \sechead{accentteal}{\faInfoCircle\ What changes --- and what doesn't}
+      \scriptsize
+      \begin{itemize}\setlength\itemsep{2pt}
+        \item[\faKey] \texttt{alcf-tokens login} mints your ALCF \emph{inference}
+          token; \texttt{test-token inference} is the only proof it works.
+        \item[\faFileCode] \texttt{alcf-ai agent configure claude} writes
+          \texttt{\textasciitilde/.claude/settings.json} \emph{for} you ---
+          aimed at the ALCF Inference Service. No PAT, no hand-edited JSON.
+        \item[\faCheckCircle] \textbf{Everything else is identical} --- the four
+          MCP servers, the \texttt{submit-job} skill, Examples 1--3. ALCF
+          inference speaks the same Anthropic wire as MAG.
+      \end{itemize}
+      \vspace{2pt}
+      {\tiny\color{midgray}Needs an ALCF account. Guide:
+       \texttt{docs.alcf.anl.gov/services/inference-endpoints}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------- BACKUP: VERIFY
+% curl round-trip quoted verbatim from SES 03_ALCF_Inference_Service/README.md.
+% Same token the agent uses; proves the endpoint before blaming the agent.
+\begin{frame}[fragile]{Backup: prove the endpoint answers --- no agent needed}
+  \codetag{\faTerminal\ a one-line round trip to the ALCF Inference Service}
+\begin{lstlisting}[style=shell]
+token=$(alcf-tokens get-token inference)
+curl -H "Authorization: Bearer $token" \
+     -H "Content-Type: application/json" \
+     -d '{"model": "gpt-oss-120b",
+          "messages": [{"role": "user", "content": "hello!"}]}' \
+  https://inference-api.alcf.anl.gov/resource_server/metis/api/v1/chat/completions | jq
+\end{lstlisting}
+  \vspace{2pt}
+  {\scriptsize\color{midgray}Same token the agent uses --- if this returns a
+   reply, the endpoint is healthy and the agent will reach it too.
+   \texttt{alcf-ai ls-jobs metis} shows which models are hot right now.}
+\end{frame}
+
+% ---------------------------------------------------------------- BACKUP: REFERENCES
+% Last slide of the deck, by request. This is the provenance of the tutorial:
+% the MCP-server layout, the submit-job skill, and the two ALCF-inference backup
+% slides immediately above are all adapted from ALCF's Service Enabled Science
+% training (session 05). Both paths checked against origin/main of
+% argonne-lcf/Service_Enabled_Science -- slides.pdf IS tracked on main, so the
+% blob path resolves. URLs printed bare, matching this deck's convention.
+\begin{frame}[plain]{References}
+  \vfill
+  \begin{center}
+  \begin{minipage}{0.85\textwidth}
+    \sechead{accentteal}{\faBookOpen\ Reference: ALCF \emph{Service Enabled
+      Science} training}
+    \footnotesize
+    \faGithub\ \texttt{github.com/argonne-lcf/Service\_Enabled\_Science}\par
+    \vspace{2pt}
+    \faFilePdf\ Session 05, \emph{Agentic Workflows} --- slides:\\
+    \texttt{\ \ .../blob/main/05\_Agentic\_Workflows/slides.pdf}\par
+    \vspace{3pt}
+    {\color{midgray}This tutorial's MCP-server layout, the \texttt{submit-job}
+     skill, and the ALCF-inference backup all build on that session.}
   \end{minipage}
   \end{center}
   \vfill

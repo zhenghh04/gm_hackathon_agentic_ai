@@ -58,8 +58,13 @@ it's identical whether the tool underneath is `alcf-iri`, `nersc-iri`, or
   cheaply.
 - **Let it monitor.** Have the agent poll until the job reaches a terminal state
   and then fetch the output, rather than you watching the queue.
-- **Then a real workload.** The training and inference spine from Part 1, at
-  system scale — each is the same loop with a bigger script.
+- **Then a real workload — your own.** Once
+  [Lab 09](part3_iri/09_one_sentence_mnist.md) has the agent turn one sentence
+  into a MNIST job, **swap the MNIST example for your code, your allocation, your
+  queue.** Nothing in the loop is tutorial-specific — point the same servers at
+  your project and run the workload you actually came with. The training and
+  inference spine from Part 1 scales the same way: each is the same loop with a
+  bigger script.
 
 ## Etiquette on shared systems
 

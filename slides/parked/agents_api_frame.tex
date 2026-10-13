@@ -1,0 +1,60 @@
+% Parked frame: "Beyond the CLI: the OpenAI Agents API, pointed at MAG"
+% Removed from amsc_agentic_ai_handson.tex on 2026-10-13 at the author's
+% request ("for now"). It was never committed before removal, so this file
+% is the ONLY copy -- do not delete it. Restore by pasting it back, or by
+% \input{parked/agents_api_frame} at the old location (after the Codex slide).
+%
+% ---------------------------------------------------------------- AGENTS API
+% Facts + schematic are from the attendee-visible repo
+% github.com/zhenghh04/amsc-mag-agents-api-adapter (README verified live 2026-09-14):
+% MAG's *managed* Agents API has no base_url hook, but MAG exposes every
+% primitive (Responses API, function_call loop, sessions, streaming, compaction).
+% The shim owns the Agents API HTTP/SSE contract + the tool loop; tools run in
+% OpenAI's codex exec-server sandbox. Stock openai-SDK Agents examples run
+% unchanged with only base_url swapped. Keep this claim-for-claim with the README.
+\begin{frame}{Beyond the CLI: the OpenAI \emph{Agents API}, pointed at MAG}
+  \begin{columns}[T,totalwidth=\textwidth]
+    \begin{column}{0.50\textwidth}
+      \centering
+      \begin{tikzpicture}[line width=0.85pt]
+        \node[agentnode, text width=2.7cm] (sdk) at (0.6,3.4)
+          {\faRobot\ \textbf{OpenAI Agents SDK}\\[1pt]
+           \tiny\normalfont only \texttt{base\_url} swapped};
+        \node[toolnode=accentgold, text width=2.7cm] (shim) at (0.6,1.7)
+          {\faRandom\ \textbf{adapter shim}\\[1pt]
+           \tiny\normalfont \texttt{/v1/agents/sessions}};
+        \node[toolnode=accentteal, text width=2.7cm] (mag) at (0.6,0)
+          {\faComments\ \textbf{Responses API}\\[1pt]
+           \tiny\normalfont MAG \textbullet\ \texttt{POST /v1/responses}};
+        \node[toolnode=labnavy, text width=2.4cm] (sbx) at (4.4,1.7)
+          {\faBolt\ \textbf{codex exec-server}\\[1pt]
+           \tiny\normalfont sandbox:\\[-1pt]\tiny \texttt{bash/fs/apply\_patch}};
+
+        \draw[flow=midgray] (sdk.south)
+          -- node[right,font=\tiny,text=midgray,inner sep=2pt]{Agents API} (shim.north);
+        \draw[flow=midgray] (shim.south)
+          -- node[right,font=\tiny,text=midgray,inner sep=2pt]{inference} (mag.north);
+        \draw[flow=midgray] (shim.east)
+          -- node[above,font=\tiny,text=midgray,inner sep=2pt]{tools} (sbx.west);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.04\textwidth}\end{column}
+    \begin{column}{0.46\textwidth}
+      \sechead{labnavy}{\faQuestionCircle\ Why a translator}
+      \scriptsize
+      \begin{itemize}\setlength\itemsep{2.5pt}
+        \item[\faBan] OpenAI's \emph{managed} Agents API is model-hosted --- it has
+          \textbf{no \texttt{base\_url} hook}, so you cannot aim it at MAG.
+        \item[\faPlug] But MAG exposes every \emph{primitive} it is built on ---
+          Responses API, the \texttt{function\_call} loop, sessions, streaming,
+          compaction.
+        \item[\faLayerGroup] The shim is thin: it owns only the Agents API
+          HTTP/SSE contract and the tool loop; MAG does the rest.
+        \item[\faCheckCircle] Stock \texttt{openai}-SDK Agents examples run
+          \textbf{unchanged} --- swap \texttt{base\_url}, keep your PAT.
+      \end{itemize}
+      \vspace{3pt}
+      {\tiny\color{midgray}\faGithub\ \texttt{github.com/zhenghh04/amsc-mag-agents-api-adapter}}
+    \end{column}
+  \end{columns}
+\end{frame}

@@ -23,11 +23,22 @@ is installed on the shared login nodes.
 You don't need all three. Set up the one(s) you have; the servers you didn't
 authenticate simply report "not authenticated" and are harmless.
 
-### One more server, no token required
+### The knowledge leg — one more server, no token required
 
 | Server | Serves | Auth (see PREREQUISITES) |
 | --- | --- | --- |
-| `knowledge` | `retrieve_alcf_docs` — searches the public ALCF/NERSC/OLCF docs | **none** (public endpoint, token-free) |
+| `knowledge` | `retrieve_alcf_docs` — searches live ALCF/OLCF/NERSC/LLNL docs (+ PBS, Slurm, CUDA, HIP, oneAPI, SYCL, OpenMP) | **none** (public endpoint, token-free) |
+
+This is the fourth leg of the four-server picture (**model + knowledge + reach +
+data**). It needs **no token and no account** — so it answers before you've
+logged in to any facility. Under the hood
+[`mcp/knowledge/docs_server.py`](../mcp/knowledge/docs_server.py) is itself a
+*client* of ALCF's public server at `https://ask.alcf.anl.gov/mcp`, re-exposing
+its one tool here. Wrapping it (rather than registering that URL directly) means
+only Python's HTTP stack ever reaches the upstream, which routes cleanly around
+its Cloudflare edge (that 403s some runtimes by TLS fingerprint). Ask a facility
+question and watch for the `retrieve_alcf_docs` call — **no call means the answer
+came from training data, not live docs.**
 
 ## The skill
 
@@ -48,6 +59,7 @@ it to your own project's conventions is the point.
 | --- | --- | --- | --- |
 | [07](07_mcp_setup_and_explore.md) | Connect to ALCF/NERSC/OLCF & explore (read-only) | 20–30 min | free (no jobs) |
 | [08](08_iri_job_submission.md) | IRI job submission and monitoring | 30–45 min | ~1 node-minute |
+| [09](09_one_sentence_mnist.md) | One sentence → a MNIST job on a GPU (capstone) | 20–30 min | ~1 node-minute |
 
 ## The one loop to learn
 

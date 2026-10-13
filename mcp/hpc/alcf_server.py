@@ -857,6 +857,31 @@ async def authenticate_globus_transfer(token: str = "") -> str:
 
 
 @mcp.tool()
+async def local_endpoint() -> str:
+    """Report this machine's Globus Connect Personal collection.
+
+    Call this first when staging local files — it confirms Globus Connect
+    Personal is set up and returns the collection UUID to pass as the
+    `source_endpoint` of `globus_transfer`. If it returns an error, the user
+    has not finished GCP setup and no upload will work until they do.
+
+    The same collection ID is used for ALCF, NERSC, and OLCF: it identifies
+    this machine, not the destination facility.
+    """
+    try:
+        return _fmt({
+            "collection_id": client._local_endpoint(),
+            "note": (
+                "Pass this UUID as source_endpoint to globus_transfer when "
+                "uploading. Only the directories GCP publishes are reachable; "
+                "use globus_ls to check a path before assuming it exists."
+            ),
+        })
+    except Exception as exc:
+        return f"Error resolving local Globus endpoint: {exc}"
+
+
+@mcp.tool()
 async def globus_ls(endpoint: str, path: str, show_hidden: bool = False) -> str:
     """List contents of a directory on a Globus endpoint.
 
@@ -889,6 +914,25 @@ async def globus_ls(endpoint: str, path: str, show_hidden: bool = False) -> str:
         return _fmt({"path": path, "endpoint": endpoint, "entries": simplified})
     except Exception as exc:
         return f"Error listing directory: {exc}"
+
+
+@mcp.tool()
+async def globus_mkdir(endpoint: str, path: str, parents: bool = True) -> str:
+    """Create a directory on a Globus endpoint before staging into it.
+
+    Idempotent: a directory that already exists is reported, not an error. With
+    `parents=True` (default) every missing ancestor is created top-down, so a
+    full path like `/<project>/<your-username>/run1` is made in one call.
+
+    Call this on the destination directory before `globus_transfer` so staging
+    never fails on a missing folder. `endpoint` takes the same shorthand
+    ("home", "eagle", "grand", "flare"), display name, or UUID as the other
+    Globus tools. Requires authenticate_globus_transfer() first.
+    """
+    try:
+        return _fmt(await client.globus_mkdir(endpoint, path, parents))
+    except Exception as exc:
+        return f"Error creating directory: {exc}"
 
 
 @mcp.tool()
