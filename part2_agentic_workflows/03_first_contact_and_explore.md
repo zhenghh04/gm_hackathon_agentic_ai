@@ -33,7 +33,11 @@ In the session, type these in order:
 /mcp      # the four servers and their tools
 ```
 
-> On opencode: `/models` and `/mcp`.
+> **Codex** has the same two: `/model` and `/mcp`.
+>
+> **opencode** uses `/models` (plural) for the first, and has **no `/mcp`
+> slash command** — check your servers from a shell instead, with
+> `opencode mcp list`.
 
 Then ask a facility question:
 
