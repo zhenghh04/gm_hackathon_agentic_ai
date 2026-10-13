@@ -443,6 +443,35 @@ def _ensure_inference_token(interactive: bool = False, force: bool = False) -> b
     )
 
 
+# Tokens that `authenticate` mints alongside the Globus Transfer token, each
+# tagged with the facility it belongs to so --facility can skip the rest.
+# Without the tag, `authenticate --facility alcf` walked an attendee through a
+# NERSC login too -- three browser round-trips for a one-facility session.
+#
+# OLCF is absent on purpose: its IRI credential is a myOLCF PAT that the user
+# pastes in by hand, so there is no interactive flow for us to drive.
+_DELEGATED_TOKENS: tuple[tuple[str, str, Path, object], ...] = (
+    ("ALCF IRI", "alcf", _IRI_TOKEN_SCRIPT, _ensure_iri_token),
+    ("NERSC IRI", "nersc", _NERSC_IRI_TOKEN_SCRIPT, _ensure_nersc_iri_token),
+    ("ALCF Inference", "alcf", _INFERENCE_TOKEN_SCRIPT, _ensure_inference_token),
+)
+
+
+def _delegated_tokens(facility: str | None) -> list[tuple[str, object]]:
+    """(label, ensure_fn) pairs to mint for ``facility`` -- all of them if None.
+
+    Entries whose helper script is missing are dropped here rather than inside
+    the loop, so a "step N of M" count promises exactly as many logins as the
+    attendee will actually be asked for.
+    """
+    want = facility.strip().lower() if facility else None
+    return [
+        (label, fn)
+        for label, fac, script, fn in _DELEGATED_TOKENS
+        if (want is None or fac == want) and script.is_file()
+    ]
+
+
 def _get_iri_expiry() -> str:
     """Get IRI token expiry as a human-readable string."""
     if not _IRI_TOKEN_SCRIPT.is_file():
@@ -654,9 +683,11 @@ def authenticate(
     non-OLCF user wants. It was previously hard-wired to ORNL here and ignored
     the --session-domain flag, so there was no way to opt out.
 
-    ``facility`` limits which collections' data_access scopes are requested.
-    It has no effect without ``include_data_access``: the base Transfer scope
-    is not collection-specific, so there is nothing to narrow.
+    ``facility`` narrows two things: which collections' data_access scopes are
+    requested (only under ``include_data_access`` -- the base Transfer scope is
+    not collection-specific, so there is nothing to narrow), and which
+    delegated facility tokens get minted afterwards. An ALCF attendee should
+    never be walked through a NERSC login.
     """
     client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
     scopes = (
@@ -667,6 +698,12 @@ def authenticate(
     client.oauth2_start_flow(requested_scopes=scopes, refresh_tokens=True)
 
     authorize_url = client.oauth2_get_authorize_url(**_session_pin_kwargs(session_domain))
+
+    # Count the whole sequence up front and number each leg. Several separate
+    # browser logins with no labels read as one flow looping on itself.
+    pending = _delegated_tokens(facility)
+    total = 1 + len(pending)
+    print(f"\n=== Login 1 of {total}: Globus Transfer (file staging) ===")
     print(f"Open this URL in your browser:\n\n  {authorize_url}\n")
     auth_code = _extract_auth_code(input("Paste the authorization code here: "))
 
@@ -702,13 +739,11 @@ def authenticate(
     print(f"Globus Transfer token saved to {ENV_FILE}")
 
     # Force a fresh interactive login for every other token we manage so
-    # `authenticate` always returns a complete, freshly-issued token set.
+    # `authenticate` always returns a complete, freshly-issued token set --
+    # narrowed to --facility, if given, by _delegated_tokens above.
     delegated_ok = True
-    for label, ensure_fn in (
-        ("ALCF IRI", _ensure_iri_token),
-        ("NERSC IRI", _ensure_nersc_iri_token),
-        ("ALCF Inference", _ensure_inference_token),
-    ):
+    for step, (label, ensure_fn) in enumerate(pending, start=2):
+        print(f"\n=== Login {step} of {total}: {label} ===")
         if not ensure_fn(interactive=True, force=True):
             print(f"Error: {label} token authentication failed.")
             delegated_ok = False
@@ -1009,11 +1044,13 @@ def main() -> None:
         "--facility",
         choices=known_facilities(),
         help=(
-            "Facility you are logging in for. Does two things: picks the right "
-            "identity-domain pin ('olcf' pins the login to ORNL SSO; 'alcf' and "
-            "'nersc' stay unpinned, which is what those need), and limits "
-            "--include-data-access to that facility's collections so you are "
-            "not asked to consent to other facilities' storage."
+            "Facility you are logging in for. Does three things: picks the "
+            "right identity-domain pin ('olcf' pins the login to ORNL SSO; "
+            "'alcf' and 'nersc' stay unpinned, which is what those need); "
+            "limits --include-data-access to that facility's collections so "
+            "you are not asked to consent to other facilities' storage; and "
+            "skips the other facilities' token logins, so `authenticate "
+            "--facility alcf` never sends you through a NERSC login."
         ),
     )
     pin.add_argument(
