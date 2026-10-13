@@ -513,13 +513,13 @@ async def authenticate_globus_transfer(token: str = "") -> str:
     if not token:
         return (
             f"Error: no token provided and GLOBUS_TRANSFER_TOKEN not found in {_ENV_FILE}. "
-            "Run `python scripts/globus_auth.py ensure_valid` to mint one, then retry."
+            "Run `python scripts/auth/globus_auth.py ensure_valid` to mint one, then retry."
         )
     if len(token) < 60:
         return (
             f"ERROR: token appears truncated ({len(token)} chars). "
             "Globus tokens are 80-100+ chars. "
-            "Get the full token with: python scripts/globus_auth.py ensure_valid"
+            "Get the full token with: python scripts/auth/globus_auth.py ensure_valid"
         )
     client.set_transfer_token(token)
     _update_env("GLOBUS_TRANSFER_TOKEN", token)

@@ -205,7 +205,7 @@ async def authenticate_globus_transfer(token: str = "") -> str:
     if not token or not token.strip():
         return (
             f"Error: no token provided and GLOBUS_TRANSFER_TOKEN not found in {_ENV_FILE}. "
-            "Run `python scripts/globus_auth.py ensure_valid` to mint one, then retry."
+            "Run `python scripts/auth/globus_auth.py ensure_valid` to mint one, then retry."
         )
     if _is_shell_placeholder(token):
         return (

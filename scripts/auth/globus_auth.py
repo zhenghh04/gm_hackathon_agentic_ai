@@ -17,6 +17,10 @@ Usage:
     python scripts/auth/globus_auth.py ensure_valid           # refresh if needed, then sync .env
     python scripts/auth/globus_auth.py status                 # show token expiry
     python scripts/auth/globus_auth.py logout                 # remove cached tokens
+
+Add --facility alcf|nersc|olcf to authenticate/get_url to pick the right
+identity-domain pin. Only OLCF needs one (ORNL SSO); ALCF and NERSC log in
+unpinned, which is the default, so attendees at those two can omit the flag.
 """
 
 from __future__ import annotations
@@ -101,6 +105,62 @@ TRANSFER_ENDPOINTS: dict[str, dict[str, object]] = {
         "session_domain": "sso.ccs.ornl.gov",
     },
 }
+
+# Identity domain to pin the login to, or None to let Globus show its normal
+# identity chooser.
+#
+# This defaults to None ON PURPOSE. Globus Transfer's base scope works with ANY
+# linked identity, so pinning a domain does not buy access -- it REMOVES it for
+# everyone who lacks that identity. This used to default to sso.ccs.ornl.gov,
+# which silently forced ALCF and NERSC users through ORNL's SSO and left them
+# unable to mint a Transfer token at all.
+#
+# The ORNL value is still available opt-in via --session-domain, for the one
+# case that needs it: landing on the OLCF DTN with an ORNL identity (see
+# TRANSFER_ENDPOINTS["olcf_dtn"]["session_domain"]).
+DEFAULT_SESSION_DOMAIN: str | None = None
+OLCF_SESSION_DOMAIN = "sso.ccs.ornl.gov"
+
+
+def known_facilities() -> list[str]:
+    """Lowercase facility names that appear in TRANSFER_ENDPOINTS."""
+    return sorted({str(e["facility"]).lower() for e in TRANSFER_ENDPOINTS.values()})
+
+
+def facility_session_domain(facility: str) -> str | None:
+    """Identity domain to pin ``facility``'s login to, or None to leave it open.
+
+    Read out of TRANSFER_ENDPOINTS so the per-endpoint ``session_domain`` key is
+    the single source of truth. Pinning a new facility then means adding that key
+    to its entry, not editing a second map that can drift out of sync with it.
+
+    Only OLCF carries a pin today; ALCF and NERSC return None ON PURPOSE, not for
+    lack of a value. Their Transfer tokens work with any linked identity, so a pin
+    would remove access rather than grant it (see DEFAULT_SESSION_DOMAIN). That
+    makes ``--facility alcf`` a deliberate no-op: it exists so "which facility am
+    I using?" is a question the CLI can answer directly, instead of making every
+    user reason about identity domains only to discover theirs needs nothing.
+    """
+    want = facility.strip().upper()
+    for entry in TRANSFER_ENDPOINTS.values():
+        if str(entry["facility"]).upper() == want:
+            return str(entry["session_domain"]) if entry.get("session_domain") else None
+    raise ValueError(
+        f"unknown facility {facility!r}; expected one of {', '.join(known_facilities())}"
+    )
+
+
+def _session_pin_kwargs(session_domain: str | None) -> dict[str, str]:
+    """Authorize-URL kwargs that pin the login, or {} to leave it unpinned.
+
+    These keys must be ABSENT, not None. globus_sdk builds the query string by
+    filtering out its own MISSING sentinel -- it does not filter None -- so
+    ``session_required_single_domain=None`` is urlencoded as the literal string
+    "None" and Globus sees a domain named "None". Same for ``prompt``.
+    """
+    if not session_domain:
+        return {}
+    return {"session_required_single_domain": session_domain, "prompt": "login"}
 
 
 def _build_transfer_data_access_scope() -> str:
@@ -564,16 +624,23 @@ def _print_auth_api_error(exc: Exception) -> None:
     )
 
 
-def authenticate(*, include_data_access: bool = False) -> dict | None:
-    """Run browser-based OAuth2 login for Globus Transfer."""
+def authenticate(
+    *,
+    include_data_access: bool = False,
+    session_domain: str | None = DEFAULT_SESSION_DOMAIN,
+) -> dict | None:
+    """Run browser-based OAuth2 login for Globus Transfer.
+
+    ``session_domain`` pins the login to one identity provider. Leave it None
+    (the default) to get Globus's normal identity chooser -- that is what any
+    non-OLCF user wants. It was previously hard-wired to ORNL here and ignored
+    the --session-domain flag, so there was no way to opt out.
+    """
     client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
     scopes = TRANSFER_DATA_ACCESS_SCOPE if include_data_access else TRANSFER_SCOPE
     client.oauth2_start_flow(requested_scopes=scopes, refresh_tokens=True)
 
-    authorize_url = client.oauth2_get_authorize_url(
-        session_required_single_domain=DEFAULT_SESSION_DOMAIN or None,
-        prompt="login" if DEFAULT_SESSION_DOMAIN else None,
-    )
+    authorize_url = client.oauth2_get_authorize_url(**_session_pin_kwargs(session_domain))
     print(f"Open this URL in your browser:\n\n  {authorize_url}\n")
     auth_code = _extract_auth_code(input("Paste the authorization code here: "))
 
@@ -761,9 +828,6 @@ def logout() -> None:
     print(f"Globus Transfer tokens removed from {ENV_FILE}")
 
 
-DEFAULT_SESSION_DOMAIN = "sso.ccs.ornl.gov"
-
-
 def get_url(
     session_domain: str | None = DEFAULT_SESSION_DOMAIN,
     *,
@@ -781,10 +845,7 @@ def get_url(
 
     PKCE_STATE_FILE.write_text(json.dumps({"client_id": CLIENT_ID, "verifier": verifier}))
 
-    url = client.oauth2_get_authorize_url(
-        session_required_single_domain=session_domain if session_domain else None,
-        prompt="login" if session_domain else None,
-    )
+    url = client.oauth2_get_authorize_url(**_session_pin_kwargs(session_domain))
     print(url)
     return url
 
@@ -906,11 +967,26 @@ def main() -> None:
         choices=["authenticate", "get_url", "exchange", "ensure_valid", "sync_env", "status", "logout"],
     )
     parser.add_argument("--code", help="Auth code for the exchange action")
-    parser.add_argument(
+    # Mutually exclusive so there is no precedence rule to remember: argparse
+    # rejects both-at-once loudly instead of silently picking a winner.
+    pin = parser.add_mutually_exclusive_group()
+    pin.add_argument(
+        "--facility",
+        choices=known_facilities(),
+        help=(
+            "Facility you are logging in for. Picks the right identity-domain "
+            "pin: 'olcf' pins the login to ORNL SSO; 'alcf' and 'nersc' leave it "
+            "unpinned, which is what those facilities need. Does NOT scope the "
+            "token -- the token minted is the same either way."
+        ),
+    )
+    pin.add_argument(
         "--session-domain",
         help=(
-            "Force session with this identity domain. Defaults to "
-            f"{DEFAULT_SESSION_DOMAIN!r}; pass an empty string to disable."
+            "Pin the login to one identity domain by name -- the escape hatch "
+            "for a domain --facility does not cover. Default: no pin, so Globus "
+            "shows its normal identity chooser, which is correct for ALCF and "
+            f"NERSC. Equivalent to --facility olcf: {OLCF_SESSION_DOMAIN!r}."
         ),
     )
     parser.add_argument(
@@ -923,13 +999,22 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # One resolver for both flows, so `authenticate` and `get_url` can never
+    # disagree about which domain the login is pinned to.
+    if args.facility:
+        session_domain = facility_session_domain(args.facility)
+    elif args.session_domain is None:
+        session_domain = DEFAULT_SESSION_DOMAIN
+    else:
+        session_domain = args.session_domain
+
     if args.action == "authenticate":
-        ok = authenticate(include_data_access=args.include_data_access)
+        ok = authenticate(
+            include_data_access=args.include_data_access,
+            session_domain=session_domain,
+        )
         sys.exit(0 if ok else 1)
     elif args.action == "get_url":
-        session_domain = (
-            DEFAULT_SESSION_DOMAIN if args.session_domain is None else args.session_domain
-        )
         get_url(
             session_domain=session_domain,
             include_data_access=args.include_data_access,
@@ -942,6 +1027,25 @@ def main() -> None:
         sys.exit(0 if ok else 1)
     elif args.action == "ensure_valid":
         ok = ensure_valid()
+        if not ok:
+            # ensure_valid() can only REFRESH; it has no way to mint a first
+            # token, because the initial consent is a browser flow. It used to
+            # just exit 1 in silence, which reads as "Globus is broken" rather
+            # than "you have not logged in yet" -- so spell out the bootstrap.
+            print(
+                "No usable Globus token.\n"
+                "\n"
+                "`ensure_valid` only REFRESHES an existing token. The first login\n"
+                "is a browser consent flow, so bootstrap it once:\n"
+                "\n"
+                "    python scripts/auth/globus_auth.py authenticate\n"
+                "        # prints a URL -> open it, log in, copy the auth code\n"
+                "        # on OLCF, add: --facility olcf\n"
+                "    python scripts/auth/globus_auth.py exchange --code <CODE>\n"
+                "\n"
+                "Then `ensure_valid` keeps it fresh from there on.",
+                file=sys.stderr,
+            )
         sys.exit(0 if ok else 1)
     elif args.action == "sync_env":
         ok = sync_env()
