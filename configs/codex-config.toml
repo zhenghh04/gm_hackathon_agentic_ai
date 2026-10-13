@@ -1,0 +1,53 @@
+# Author: Huihuo Zheng, huihuo.zheng@anl.gov
+# Copyright: Trinity Science 2026
+#
+# Codex configuration for "Building Agentic Workflows with AmSC MAG and IRI"
+# (Genesis Mission October Hackathon).
+#
+# Copy to ~/.codex/config.toml, then:  export AMSC_TOKEN=<your MAG PAT>
+#
+# If you already have a ~/.codex/config.toml, MERGE these blocks into it rather
+# than overwriting — Codex keeps all of your settings in this one file.
+
+model = "gpt-5@openai"
+model_provider = "amsc"
+
+# MAG speaks the OpenAI wire, so Codex reaches it through a custom provider
+# rather than the ANTHROPIC_* variables Claude Code uses.
+#
+#   env_key names a shell variable WE choose; nothing but Codex reads it.
+#   wire_api MUST be "responses" — Codex >= 0.155 removed the "chat" wire and
+#     refuses to load a config that asks for it. MAG serves Responses natively.
+#   @openai in the model string pins the routing target AND the allocation
+#     bucket it bills, so it is a billing decision, not a cosmetic one.
+[model_providers.amsc]
+name     = "AmSC MAG"
+base_url = "https://mag.genesis.americansciencecloud.org/v1"
+env_key  = "AMSC_TOKEN"
+wire_api = "responses"
+
+# The same four MCP servers Claude Code gets from .mcp.json and opencode gets
+# from opencode.jsonc. Without these, Codex can talk to a model but cannot
+# reach a facility — every lab in Part 2 needs them.
+#
+# NOTE: these paths are RELATIVE, and ~/.codex/config.toml is a GLOBAL file, so
+# they resolve against whatever directory you start Codex in. Launch `codex`
+# from the repo root. (Or replace them with absolute paths to your clone.)
+#
+# Verify with:  codex mcp list      -> all four should read "enabled"
+
+[mcp_servers.alcf-iri]
+command = "python"
+args = ["mcp/hpc/alcf_server.py"]
+
+[mcp_servers.nersc-iri]
+command = "python"
+args = ["mcp/hpc/nersc_server.py"]
+
+[mcp_servers.olcf-iri]
+command = "python"
+args = ["mcp/hpc/olcf_iri_server.py"]
+
+[mcp_servers.knowledge]
+command = "python"
+args = ["mcp/knowledge/docs_server.py"]

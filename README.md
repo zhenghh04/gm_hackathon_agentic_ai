@@ -131,6 +131,9 @@ Four MCP servers and one skill — that is the whole system.
 ```text
 gm_hackathon_agentic_ai/
   .mcp.json             4 servers, one file
+  opencode.jsonc        same 4, for opencode
+  configs/
+    README.md            which file goes where
   mcp/
     auth_env.py          tokens, Globus id
     knowledge/
@@ -200,6 +203,9 @@ This track is **agent-agnostic** — the labs drive **tools** and the shared
 | **Claude Code** (default) | [`.mcp.json`](.mcp.json) + `~/.claude/settings.json` | Anthropic |
 | **Codex** | `~/.codex/config.toml` ([Lab 01](part1_mag_setup/01_mag_setup.md#codex--codexconfigtoml)) | OpenAI (`/v1`) |
 | **opencode** | [`opencode.jsonc`](opencode.jsonc) | OpenAI (`/v1`) |
+
+Ready-made templates for all three, and a table of which file goes where, are
+in [`configs/`](configs/README.md).
 
 Where a lab shows `claude`, run `codex` or `opencode` instead — the MCP servers
 and the `submit-job` skill are the same.

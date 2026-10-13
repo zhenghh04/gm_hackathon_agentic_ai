@@ -1,0 +1,8 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://mag.genesis.americansciencecloud.org",
+    "ANTHROPIC_AUTH_TOKEN": "YOUR_PAT_HERE",
+    "ANTHROPIC_CUSTOM_HEADERS": "X-AmSC-MAG-Provider: amazon"
+  },
+  "model": "opus"
+}

@@ -75,6 +75,12 @@ Using **Codex** or **opencode** instead? See
 [Codex](#codex--codexconfigtoml) and [opencode](#opencode) below; the rest of
 this lab is identical.
 
+> **Ready-made config files for all three** live in
+> [`configs/`](../configs/README.md), with a table of where each one goes.
+> Short version: Claude Code and Codex read their config from your **home
+> directory** (so copy it there), opencode reads it from the **repo root**
+> (so there is nothing to copy).
+
 ## Step 2 — Get a MAG Personal Access Token
 
 0. **Request access to MAG first** (if you don't already have it):
@@ -164,6 +170,16 @@ Windows: `%USERPROFILE%\.claude\settings.json`). Create it if it doesn't exist:
 
 Set once, every shell inherits it.
 
+Rather than typing it, copy the ready-made file and edit in your PAT:
+
+```bash
+mkdir -p ~/.claude
+cp configs/claude-settings.json ~/.claude/settings.json   # merge if you already have one
+```
+
+MCP servers come from [`.mcp.json`](../.mcp.json) in the repo root, so **start
+`claude` from the repo root** — nothing to copy for those. Confirm with `/mcp`.
+
 > **Prefer not to store the PAT in a file?** Leave `ANTHROPIC_AUTH_TOKEN` out
 > of `settings.json` and export it instead:
 > ```bash
@@ -181,7 +197,7 @@ Codex speaks the **OpenAI wire**, so it needs a custom provider pointed at
 MAG's `/v1` — *not* the `ANTHROPIC_*` variables above:
 
 ```toml
-model = "gpt-5"
+model = "gpt-5@openai"
 model_provider = "amsc"
 
 [model_providers.amsc]
@@ -197,12 +213,45 @@ wire_api = "responses"
 > wire natively, so `responses` is the setting that works.
 
 The key is read from the environment variable named by `env_key`, so no secret
-lives in the TOML. Then:
+lives in the TOML.
+
+**Codex also needs the four MCP servers**, in the same file. Claude Code picks
+these up from `.mcp.json` and opencode from `opencode.jsonc`, but Codex has no
+project-level equivalent — without this block it can talk to a model and reach
+no facility at all, so every lab in Part 2 fails:
+
+```toml
+[mcp_servers.alcf-iri]
+command = "python"
+args = ["mcp/hpc/alcf_server.py"]
+
+[mcp_servers.nersc-iri]
+command = "python"
+args = ["mcp/hpc/nersc_server.py"]
+
+[mcp_servers.olcf-iri]
+command = "python"
+args = ["mcp/hpc/olcf_iri_server.py"]
+
+[mcp_servers.knowledge]
+command = "python"
+args = ["mcp/knowledge/docs_server.py"]
+```
+
+Rather than typing all that, copy the ready-made file:
 
 ```bash
+mkdir -p ~/.codex
+cp configs/codex-config.toml ~/.codex/config.toml   # merge if you already have one
 export AMSC_TOKEN=YOUR_PAT_HERE   # the same PAT, from Step 3
 codex
 ```
+
+Confirm with `codex mcp list` — all four should read `enabled`.
+
+> Those paths are **relative** and `~/.codex/config.toml` is **global**, so
+> they resolve against wherever you start Codex. Launch it from the repo root,
+> or edit them to absolute paths.
 
 Usage still bills to your project.
 
