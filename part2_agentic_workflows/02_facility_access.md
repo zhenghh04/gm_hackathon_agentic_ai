@@ -69,14 +69,16 @@ The server checks that variable first, then the GCP config file, then raises a
 clear error if neither is present. **Never hardcode a local endpoint UUID** in
 a script.
 
-## Step 2 — One login per facility mints the tokens
+## Step 2 — One command per facility mints the tokens
 
-One command per facility. Each opens **two browser logins** — the Globus
-Transfer token, then that facility's IRI token — and writes both into `.env`:
+One command per facility. ALCF and NERSC each open **two browser logins** — the
+Globus Transfer token, then that facility's IRI token — and write both into
+`.env`. OLCF opens **one**, because its IRI token has no browser flow at all:
 
 ```bash
 python scripts/auth/globus_auth.py authenticate --facility alcf    # -> IRI_TOKEN_ALCF
 python scripts/auth/globus_auth.py authenticate --facility nersc   # -> IRI_TOKEN_NERSC
+python scripts/auth/globus_auth.py authenticate --facility olcf    # Transfer token only
 ```
 
 Run only the facility you actually have. Each login announces itself
@@ -84,9 +86,15 @@ Run only the facility you actually have. Each login announces itself
 the browser is asking about.
 
 - **ALCF / Polaris** — log in with your ALCF Globus identity and grant the
-  scopes. Writes `IRI_TOKEN_ALCF`.
+  scopes. Writes `IRI_TOKEN_ALCF`. **Two logins.**
 - **NERSC / Perlmutter** — same flow, but Globus will prompt you to link a
   **`nersc.gov` identity** if you haven't already. Writes `IRI_TOKEN_NERSC`.
+  **Two logins.**
+- **OLCF / Frontier** — **one login, and it mints no IRI token.** What
+  `--facility olcf` buys you is the *Transfer* leg: it pins the Globus login to
+  **ORNL SSO** (`sso.ccs.ornl.gov`), which is what the OLCF DTN requires. Skip
+  it and your Transfer token may carry an identity Frontier's endpoint won't
+  accept. The OLCF **IRI** token is a manual paste — see below.
 - **Globus Transfer** — one login covers data movement at every facility.
   Writes `GLOBUS_TRANSFER_TOKEN`. Check it any time with
   `python scripts/auth/globus_auth.py status`.
@@ -99,7 +107,7 @@ paste the code back.
 > runs them for you, so doing both just means logging in twice. Drop
 > `--facility` to mint every facility's token in one pass.
 
-### OLCF / Frontier — no browser flow, paste a portal token
+### OLCF / Frontier — the IRI token has no browser flow, paste a portal token
 
 ```bash
 # my.olcf.ornl.gov -> Projects -> API Tokens  (enable the COMPUTE scope!)

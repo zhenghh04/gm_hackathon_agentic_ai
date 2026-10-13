@@ -186,6 +186,11 @@ that facility's IRI token and the shared Globus Transfer token, in two labelled
 browser logins. The per-facility helpers still work standalone, but running
 them too just means logging in twice.
 
+**OLCF is the exception**: `--facility olcf` is one login and mints no IRI
+token — it covers the *Transfer* leg only, pinning the Globus login to ORNL SSO
+so the OLCF DTN will accept your identity. Frontier's IRI token is the manual
+myOLCF paste above.
+
 The `IRI_TOKEN_<FACILITY>` names are the ones the DOE IRI hands-on session uses,
 so a token you already exported there works here unchanged.
 
