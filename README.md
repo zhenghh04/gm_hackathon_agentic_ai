@@ -5,7 +5,7 @@
 *Huihuo Zheng, huihuo.zheng@anl.gov · AmSC AI Services, Argonne Leadership
 Computing Facility*
 
-**Slides: [`slides/amsc_agentic_ai_handson.pdf`](slides/) · build with `make -C slides handson`**
+**Slides: [`slides/amsc_agentic_ai_handson.pdf`](slides/amsc_agentic_ai_handson.pdf)**
 
 ---
 
