@@ -163,11 +163,26 @@ def _session_pin_kwargs(session_domain: str | None) -> dict[str, str]:
     return {"session_required_single_domain": session_domain, "prompt": "login"}
 
 
-def _build_transfer_data_access_scope() -> str:
+def _build_transfer_data_access_scope(facility: str | None = None) -> str:
+    """Transfer scope requesting data_access on verified collections.
+
+    ``facility`` narrows the request to that facility's collections; None asks
+    for all of them. Narrowing matters because data_access consent is granted
+    per collection: an ALCF user who asks for everything is shown NERSC
+    collections on the consent screen and has to approve access they have no
+    business holding -- and every extra collection is another chance for the
+    whole login to fail as UNKNOWN_SCOPE_ERROR.
+
+    Collections with data_access=False are skipped either way (see the note on
+    TRANSFER_ENDPOINTS); a facility whose collections are all unverified
+    therefore falls back to the plain transfer scope.
+    """
+    want = facility.strip().upper() if facility else None
     data_access_scopes = [
         f"*https://auth.globus.org/scopes/{entry['endpoint_id']}/data_access"
         for entry in TRANSFER_ENDPOINTS.values()
         if entry.get("data_access")
+        and (want is None or str(entry["facility"]).upper() == want)
     ]
     if not data_access_scopes:
         return TRANSFER_ALL_SCOPE
@@ -179,7 +194,6 @@ def _build_transfer_data_access_scope() -> str:
 # ConsentRequired.required_scopes response; guessing them upfront can turn the
 # whole login into UNKNOWN_SCOPE_ERROR.
 TRANSFER_SCOPE = TRANSFER_ALL_SCOPE
-TRANSFER_DATA_ACCESS_SCOPE = _build_transfer_data_access_scope()
 RESOURCE_SERVERS = {
     "transfer": "transfer.api.globus.org",
 }
@@ -212,14 +226,16 @@ _NERSC_IRI_TOKEN_SCRIPT = _AUTH_DIR / "nersc_iri_token.py"
 # ALCF Inference Gateway token script
 _INFERENCE_TOKEN_SCRIPT = _AUTH_DIR / "inference_auth_token.py"
 
-# Accepted spellings for each facility's IRI token, preferred name first. The
-# DOE IRI hands-on session standardized on IRI_TOKEN_<FACILITY>; this repo
-# originally used <FACILITY>_IRI_TOKEN. Writes go to every name so the two can
-# never drift apart; reads take the first one present. Mirrors the alias table
-# in mcp/auth_env.py — keep the two in sync.
-_ALCF_IRI_VARS = ("IRI_TOKEN_ALCF", "ALCF_IRI_TOKEN")
-_NERSC_IRI_VARS = ("IRI_TOKEN_NERSC", "NERSC_IRI_TOKEN")
-_OLCF_IRI_VARS = ("IRI_TOKEN_OLCF", "OLCF_IRI_TOKEN")
+# The env-var name holding each facility's IRI token. The DOE IRI hands-on
+# session standardized on IRI_TOKEN_<FACILITY> and that is the only spelling
+# written or read; the old <FACILITY>_IRI_TOKEN names were retired 2026-10-13.
+# Mirrors IRI_TOKEN_NAMES in mcp/auth_env.py — keep the two in sync.
+#
+# Still tuples because _ensure_delegated_token and the status printer iterate
+# them; a facility needing a second name again only has to add it here.
+_ALCF_IRI_VARS = ("IRI_TOKEN_ALCF",)
+_NERSC_IRI_VARS = ("IRI_TOKEN_NERSC",)
+_OLCF_IRI_VARS = ("IRI_TOKEN_OLCF",)
 
 
 # ── .env Helpers ─────────────────────────────────────────────────────
@@ -335,8 +351,9 @@ def _ensure_delegated_token(
     - force=False, interactive=False: only attempt get_access_token (silent).
 
     ``env_var`` may be a tuple of names, in which case the token is written
-    under every one of them — the IRI facility tokens carry two accepted
-    spellings and must stay in sync (see mcp/auth_env.py).
+    under every one of them. Every facility is down to a single name since the
+    legacy spellings were retired (see mcp/auth_env.py), so the tuples are
+    length 1 today; the loop stays because the cost is nil.
     """
     env_vars = (env_var,) if isinstance(env_var, str) else tuple(env_var)
     if not script.is_file():
@@ -504,7 +521,7 @@ def _get_inference_expiry() -> str:
 def _get_jwt_env_expiry(env_var: str | tuple[str, ...]) -> str:
     """Return human-readable expiry for a JWT stored in .env under *env_var*.
 
-    Used for myOLCF-issued Project Access Tokens (IRI_TOKEN_OLCF/OLCF_IRI_TOKEN,
+    Used for myOLCF-issued Project Access Tokens (IRI_TOKEN_OLCF,
     OLCF_S3M_TOKEN) which live only in .env — there is no helper script that can
     refresh them. PATs (type=opat) typically have no `exp` claim — they live
     until revoked — so we report "no expiry" rather than treating
@@ -561,8 +578,8 @@ def _print_all_tokens() -> None:
         print(f"\n{env_var}:")
         print(token if token else "(not available)")
 
-    # Delegated tokens. The IRI entries are labelled with the preferred
-    # spelling; the legacy alias carries the same value (see _ALCF_IRI_VARS).
+    # Delegated tokens, each under its single canonical name (see
+    # _ALCF_IRI_VARS).
     for env_var, script in (
         (_ALCF_IRI_VARS[0], _IRI_TOKEN_SCRIPT),
         (_NERSC_IRI_VARS[0], _NERSC_IRI_TOKEN_SCRIPT),
@@ -628,6 +645,7 @@ def authenticate(
     *,
     include_data_access: bool = False,
     session_domain: str | None = DEFAULT_SESSION_DOMAIN,
+    facility: str | None = None,
 ) -> dict | None:
     """Run browser-based OAuth2 login for Globus Transfer.
 
@@ -635,9 +653,17 @@ def authenticate(
     (the default) to get Globus's normal identity chooser -- that is what any
     non-OLCF user wants. It was previously hard-wired to ORNL here and ignored
     the --session-domain flag, so there was no way to opt out.
+
+    ``facility`` limits which collections' data_access scopes are requested.
+    It has no effect without ``include_data_access``: the base Transfer scope
+    is not collection-specific, so there is nothing to narrow.
     """
     client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
-    scopes = TRANSFER_DATA_ACCESS_SCOPE if include_data_access else TRANSFER_SCOPE
+    scopes = (
+        _build_transfer_data_access_scope(facility)
+        if include_data_access
+        else TRANSFER_SCOPE
+    )
     client.oauth2_start_flow(requested_scopes=scopes, refresh_tokens=True)
 
     authorize_url = client.oauth2_get_authorize_url(**_session_pin_kwargs(session_domain))
@@ -832,10 +858,19 @@ def get_url(
     session_domain: str | None = DEFAULT_SESSION_DOMAIN,
     *,
     include_data_access: bool = False,
+    facility: str | None = None,
 ) -> str | None:
-    """Print the auth URL and save PKCE state for later exchange (non-interactive)."""
+    """Print the auth URL and save PKCE state for later exchange (non-interactive).
+
+    ``facility`` narrows the requested data_access scopes exactly as it does in
+    authenticate(); it is inert without ``include_data_access``.
+    """
     client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
-    scopes = TRANSFER_DATA_ACCESS_SCOPE if include_data_access else TRANSFER_SCOPE
+    scopes = (
+        _build_transfer_data_access_scope(facility)
+        if include_data_access
+        else TRANSFER_SCOPE
+    )
     client.oauth2_start_flow(requested_scopes=scopes, refresh_tokens=True)
 
     verifier = getattr(client.current_oauth2_flow_manager, "verifier", None)
@@ -974,10 +1009,11 @@ def main() -> None:
         "--facility",
         choices=known_facilities(),
         help=(
-            "Facility you are logging in for. Picks the right identity-domain "
-            "pin: 'olcf' pins the login to ORNL SSO; 'alcf' and 'nersc' leave it "
-            "unpinned, which is what those facilities need. Does NOT scope the "
-            "token -- the token minted is the same either way."
+            "Facility you are logging in for. Does two things: picks the right "
+            "identity-domain pin ('olcf' pins the login to ORNL SSO; 'alcf' and "
+            "'nersc' stay unpinned, which is what those need), and limits "
+            "--include-data-access to that facility's collections so you are "
+            "not asked to consent to other facilities' storage."
         ),
     )
     pin.add_argument(
@@ -1012,12 +1048,14 @@ def main() -> None:
         ok = authenticate(
             include_data_access=args.include_data_access,
             session_domain=session_domain,
+            facility=args.facility,
         )
         sys.exit(0 if ok else 1)
     elif args.action == "get_url":
         get_url(
             session_domain=session_domain,
             include_data_access=args.include_data_access,
+            facility=args.facility,
         )
     elif args.action == "exchange":
         if not args.code:
