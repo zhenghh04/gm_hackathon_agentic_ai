@@ -77,4 +77,21 @@ Personal collection); never hardcode a local endpoint UUID.
 
 ---
 
+## Do not add `mcp/__init__.py`
+
+This repo has a top-level `mcp/` directory, and the servers inside it import the
+installed PyPI package of the same name (`from mcp.server.fastmcp import
+FastMCP`). That works **because `mcp/` has no `__init__.py`**: a directory
+without one is only a namespace-package *portion*, so Python keeps scanning
+`sys.path` and finds the real package in site-packages.
+
+Add an `__init__.py` and `mcp/` becomes a regular package that wins immediately,
+and every server dies with `ModuleNotFoundError: No module named 'mcp.server'`.
+The missing file is load-bearing — leave it missing.
+
+Likewise, keep launching the servers by path (`python mcp/hpc/alcf_server.py`,
+as [`.mcp.json`](.mcp.json) does) rather than `python -m`.
+
+---
+
 *Tutorial created by Huihuo Zheng, huihuo.zheng@anl.gov, Trinity Science.*

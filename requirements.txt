@@ -1,10 +1,16 @@
-# Python dependencies for Part 3 — the IRI MCP servers (mcp/hpc/*.py) and the
-# browser-login helpers (scripts/auth/*.py). Install with:
+# Python dependencies for the Part 2 MCP servers (mcp/hpc/*.py,
+# mcp/knowledge/docs_server.py) and the browser-login helpers (scripts/auth/*.py).
+# Install with:
+#     python3 -m venv .venv && . .venv/bin/activate
 #     pip install -r requirements.txt
 #
-# Part 1 (laptop) labs install their own extras on demand (numpy, matplotlib,
-# torch, anthropic) — see each lab; they are not required here.
-mcp>=1.9,<2         # FastMCP server + streamable-http client (mcp.server.fastmcp,
-                    #   mcp.client) — the knowledge server is a client of ask.alcf.anl.gov/mcp
-httpx>=0.27         # async HTTP client used by the IRI clients
-globus-sdk>=3.30    # Globus OAuth login flows in scripts/auth/
+# Part 1 is agent-CLI setup only (npm or the native installer) and imports none
+# of these — install them there anyway so the Part 2 servers start cleanly.
+mcp>=1.9,<2          # FastMCP server + streamable-http client (mcp.server.fastmcp,
+                     #   mcp.client) — the knowledge server is a client of ask.alcf.anl.gov/mcp
+httpx>=0.27          # async HTTP client used by the IRI clients
+globus-sdk>=3.46,<5  # Globus OAuth login flows in scripts/auth/. The 3.46 floor is
+                     #   load-bearing: globus_sdk.login_flows graduated out of
+                     #   globus_sdk.experimental in 3.46.0, and alcf_iri_token.py /
+                     #   nersc_iri_token.py import it unguarded. Any older release
+                     #   installs fine and then dies at Part 2 lab 02.
