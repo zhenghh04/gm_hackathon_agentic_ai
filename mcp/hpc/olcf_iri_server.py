@@ -27,6 +27,7 @@ from mcp.server.fastmcp import FastMCP
 
 from context_utils import bounded_file_text
 from olcf_iri_client import OLCFIRIClient
+from shell_args import ensure_login_shell
 
 logger = logging.getLogger(__name__)
 
@@ -347,12 +348,10 @@ async def submit_job(
                 return f"Invalid custom_attributes JSON: {je}"
 
         args_list = [a.strip() for a in arguments.split(",") if a.strip()]
-        # Force a LOGIN shell for bash/sh script invocations. IRI/PSI-J runs
-        # `<executable> <args>` NON-login, bypassing the `#!/bin/bash -l` shebang ->
-        # module/mpiexec missing -> exit 127. No-op when executable is the script
-        # itself; idempotent if -l/--login is already present.
-        if os.path.basename(executable) in ("bash", "sh") and not ({"-l", "--login"} & set(args_list)):
-            args_list = ["-l"] + args_list
+        # Force a LOGIN shell for bash/sh invocations; see shell_args for why.
+        # Folds into an existing flag group (`-c cmd` -> `-lc cmd`) rather than
+        # prepending, so an inline `-lc` command keeps its argument count.
+        args_list = ensure_login_shell(executable, args_list)
 
         spec = client.build_job_spec(
             executable=executable,

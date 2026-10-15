@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 
 from alcf_iri_client import ALCFIRIClient
 from context_utils import bounded_file_text, clamp_int
+from shell_args import ensure_login_shell
 
 logger = logging.getLogger(__name__)
 
@@ -476,13 +477,11 @@ async def submit_job(
     """
     args_list = [a.strip() for a in arguments.split(",") if a.strip()] if arguments else []
 
-    # Force a LOGIN shell for bash/sh script invocations. IRI/PSI-J runs
-    # `<executable> <args>` as a NON-login process, which BYPASSES the script's
-    # `#!/bin/bash -l` shebang -> module/conda/mpiexec are off PATH -> the job dies
-    # with exit 127. No-op when the executable IS the script (basename not bash/sh:
-    # the shebang is honored), and idempotent if the caller already passed -l/--login.
-    if os.path.basename(executable) in ("bash", "sh") and not ({"-l", "--login"} & set(args_list)):
-        args_list = ["-l"] + args_list
+    # Force a LOGIN shell for bash/sh invocations; see shell_args for why.
+    # Folds into an existing flag group (`-c cmd` -> `-lc cmd`) so the
+    # documented `["-lc", "<commands>"]` form stays at the two arguments the
+    # ALCF API allows for /bin/bash.
+    args_list = ensure_login_shell(executable, args_list)
 
     # stdout_path is mandatory in the ALCF IRI API
     resolved_stdout = stdout_path or f"/home/hzheng/{name}.out"
