@@ -19,11 +19,19 @@ import argparse
 import json
 import os
 import pathlib
+import sys
 import time
 import webbrowser
 
 import globus_sdk
 from globus_sdk.login_flows import LocalServerLoginFlowManager
+
+try:
+    # Manual copy/paste OAuth flow — no browser, no localhost callback.
+    # Correct for headless / remote (SSH) sessions.
+    from globus_sdk.login_flows import CommandLineLoginFlowManager
+except ImportError:  # older globus_sdk
+    CommandLineLoginFlowManager = None
 
 try:
     from globus_sdk import GlobusAuthorizationParameters
@@ -179,8 +187,27 @@ def _update_env(key: str, value: str) -> None:
     ENV_FILE.write_text("\n".join(lines) + "\n")
 
 
+def _browser_available() -> bool:
+    """True if a runnable web browser exists.
+
+    globus_sdk's LocalServerLoginFlowManager calls ``webbrowser.get()`` (which
+    raises ``webbrowser.Error`` on a headless host) before our monkeypatch of
+    ``webbrowser.open`` can intercept anything, so probe up front and pick the
+    command-line flow when no browser is present.
+    """
+    if os.environ.get("BROWSER"):
+        return True
+    if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
+        return False
+    try:
+        webbrowser.get()
+        return True
+    except Exception:
+        return False
+
+
 def authenticate(force_reauth: bool = False) -> dict:
-    """Launch browser login flow for NERSC IRI API."""
+    """Interactive Globus login for NERSC IRI API (browser or paste-the-code)."""
     if not force_reauth:
         try:
             token_data = get_token_data(force_refresh=False)
@@ -197,18 +224,41 @@ def authenticate(force_reauth: bool = False) -> dict:
             pass
 
     client = _build_client()
-    flow = LocalServerLoginFlowManager(client, request_refresh_tokens=True)
 
-    _original_open = webbrowser.open
-    def _open_and_print(url, *args, **kwargs):
-        print(f"\nOpen this URL in your browser to authenticate with NERSC:\n  {url}\n")
-        return _original_open(url, *args, **kwargs)
-    webbrowser.open = _open_and_print
+    # Choose a login flow that fits the environment (mirrors alcf_iri_token.py):
+    #   * browser available -> LocalServerLoginFlowManager (localhost callback).
+    #   * headless but interactive (SSH, no browser) -> CommandLineLoginFlowManager
+    #     (prints the URL, reads the pasted auth code).
+    #   * non-interactive (no TTY) -> refuse instead of hanging on input().
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        raise NERSCAuthError(
+            "Interactive OAuth login is not possible here (no TTY). Run "
+            "`python scripts/auth/nersc_iri_token.py authenticate` in a terminal, "
+            "or `ensure_valid` to refresh from the stored refresh token."
+        )
 
-    try:
+    if _browser_available():
+        flow = LocalServerLoginFlowManager(client, request_refresh_tokens=True)
+        _original_open = webbrowser.open
+        def _open_and_print(url, *args, **kwargs):
+            print(f"\nOpen this URL in your browser to authenticate with NERSC:\n  {url}\n")
+            return _original_open(url, *args, **kwargs)
+        webbrowser.open = _open_and_print
+        try:
+            token_response = flow.run_login_flow(_auth_params())
+        finally:
+            webbrowser.open = _original_open
+    else:
+        if CommandLineLoginFlowManager is None:
+            raise NERSCAuthError(
+                "No usable web browser was found and this globus_sdk lacks "
+                "CommandLineLoginFlowManager. Upgrade globus_sdk, or run "
+                "`ensure_valid` to refresh from the stored refresh token."
+            )
+        # Manual flow: prints the URL, waits for the pasted auth code. Works
+        # over SSH — the user opens the URL on their own machine.
+        flow = CommandLineLoginFlowManager(client, request_refresh_tokens=True)
         token_response = flow.run_login_flow(_auth_params())
-    finally:
-        webbrowser.open = _original_open
 
     token_data = _extract_token_data(token_response)
     _save_token_data(token_data)
