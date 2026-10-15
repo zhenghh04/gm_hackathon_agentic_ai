@@ -27,7 +27,7 @@ from mcp.server.fastmcp import FastMCP
 
 from context_utils import bounded_file_text
 from olcf_iri_client import OLCFIRIClient
-from shell_args import ensure_login_shell
+from shell_args import ensure_login_shell, parse_arguments
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +319,11 @@ async def submit_job(
         resource_id: Compute resource UUID. For Frontier on the moderate
                      enclave: 5173cdb4-d82f-5c81-8ef0-598997c12813.
         executable: Path to the executable (e.g. /bin/bash, /ccs/home/.../run.sh).
-        arguments: Comma-separated arguments for the executable.
+        arguments: Arguments for the executable, as either a JSON array
+            (e.g. '["-lc", "mpiexec --cpu-bind list:0,1 ./a.out"]') or a
+            comma-separated string. Prefer JSON when any argument contains
+            a comma. For an inline shell command, '-lc,<commands>' keeps
+            <commands> intact -- it is NOT split on its commas.
         name: Job name.
         queue_name: Slurm partition / queue (e.g. "batch", "extended").
         account: OLCF allocation account (e.g. "csc708").
@@ -347,7 +351,10 @@ async def submit_job(
             except json.JSONDecodeError as je:
                 return f"Invalid custom_attributes JSON: {je}"
 
-        args_list = [a.strip() for a in arguments.split(",") if a.strip()]
+        # Keeps a `-lc,<command>` command string verbatim instead of splitting
+        # it on every comma, which both mangled the command and overran the
+        # API's two-argument cap. A JSON array is also accepted.
+        args_list = parse_arguments(executable, arguments)
         # Force a LOGIN shell for bash/sh invocations; see shell_args for why.
         # Folds into an existing flag group (`-c cmd` -> `-lc cmd`) rather than
         # prepending, so an inline `-lc` command keeps its argument count.

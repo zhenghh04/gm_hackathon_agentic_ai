@@ -1,7 +1,7 @@
 # Author: Huihuo Zheng, huihuo.zheng@anl.gov
 # Copyright: Trinity Science 2026
 
-"""Login-shell normalization for IRI/PSI-J job submissions.
+"""Argument handling for IRI/PSI-J job submissions.
 
 IRI/PSI-J execs `<executable> <args>` directly, as a NON-login process. That
 bypasses a script's `#!/bin/bash -l` shebang, so `module`/`conda`/`mpiexec`
@@ -13,13 +13,85 @@ for /bin/bash must have a length of 2 at most") and documents the inline form
 as `"arguments": ["-lc", "<commands>"]`. So the flag has to be folded into an
 existing short-option group rather than prepended whenever one is present:
 `-c cmd` becomes `-lc cmd`, never `-l -c cmd`.
+
+That two-argument cap is also why the MCP `arguments` string cannot simply be
+split on every comma. `bash -c` takes exactly ONE argument -- the command
+string -- so a perfectly ordinary command like
+
+    -lc,module load conda; mpiexec --cpu-bind list:0,1 ./a.out
+
+must arrive as two arguments. Splitting on every comma yields three, which the
+API rejects with the same HTTP 400, *and* truncates the command at the comma.
+`parse_arguments` therefore keeps the command string verbatim, and accepts a
+JSON array for callers that want to pass the list explicitly.
 """
 
 from __future__ import annotations
 
+import json
 import os
 
 _SHELLS = ("bash", "sh")
+
+
+def _is_shell(executable: str) -> bool:
+    return os.path.basename(executable) in _SHELLS
+
+
+def _split_shell_command_form(raw: str) -> list[str] | None:
+    """Parse the `-lc,<command>` form, keeping `<command>` verbatim.
+
+    Returns None when `raw` is not leading-options-then-command, so the caller
+    can fall back to the plain comma split.
+    """
+    opts: list[str] = []
+    rest = raw
+    while True:
+        token, sep, remainder = rest.partition(",")
+        token = token.strip()
+        if len(token) < 2 or not token.startswith("-") or token == "--":
+            return None
+        opts.append(token)
+        if token[1] != "-" and "c" in token[1:]:
+            # Everything after this flag group is the single command string.
+            # Do NOT split it, and do not strip interior commas.
+            command = remainder.strip()
+            return opts + ([command] if command else [])
+        if not sep:
+            return None
+        rest = remainder
+
+
+def parse_arguments(executable: str, arguments: str | None) -> list[str]:
+    """Turn the MCP `arguments` string into the argv list PSI-J expects.
+
+    Accepts either form:
+
+    * a JSON array -- `["-lc", "echo a, b"]` -- which is unambiguous and is the
+      recommended way to pass anything containing a comma; or
+    * the legacy comma-separated string, where a leading shell flag group
+      containing `c` ends the splitting and the rest is one command string.
+    """
+    if not arguments or not arguments.strip():
+        return []
+
+    raw = arguments.strip()
+
+    if raw.startswith("["):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"arguments looks like JSON but does not parse: {exc}") from exc
+        if not isinstance(parsed, list) or not all(isinstance(a, str) for a in parsed):
+            raise ValueError("arguments JSON must be an array of strings")
+        return parsed
+
+    if _is_shell(executable):
+        split = _split_shell_command_form(raw)
+        if split is not None:
+            return split
+
+    return [a.strip() for a in raw.split(",") if a.strip()]
 
 
 def _own_options(args: list[str]) -> list[tuple[int, str]]:
@@ -48,7 +120,7 @@ def ensure_login_shell(executable: str, args: list[str]) -> list[str]:
     No-op when the executable is the script itself (basename is not a shell),
     because then the `#!/bin/bash -l` shebang is honored.
     """
-    if os.path.basename(executable) not in _SHELLS:
+    if not _is_shell(executable):
         return args
 
     opts = _own_options(args)

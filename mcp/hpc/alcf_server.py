@@ -14,7 +14,7 @@ from mcp.server.fastmcp import FastMCP
 
 from alcf_iri_client import ALCFIRIClient
 from context_utils import bounded_file_text, clamp_int
-from shell_args import ensure_login_shell
+from shell_args import ensure_login_shell, parse_arguments
 
 logger = logging.getLogger(__name__)
 
@@ -462,7 +462,11 @@ async def submit_job(
     Args:
         resource_id: The compute resource UUID (e.g., Polaris UUID).
         executable: The executable path (e.g., /bin/bash).
-        arguments: Comma-separated arguments for the executable.
+        arguments: Arguments for the executable, as either a JSON array
+            (e.g. '["-lc", "mpiexec --cpu-bind list:0,1 ./a.out"]') or a
+            comma-separated string. Prefer JSON when any argument contains
+            a comma. For an inline shell command, '-lc,<commands>' keeps
+            <commands> intact -- it is NOT split on its commas.
         name: Job name for tracking.
         queue_name: Scheduler queue name (e.g., debug, prod).
         account: Project/allocation account name for billing.
@@ -475,7 +479,10 @@ async def submit_job(
 
     Requires authentication. Returns job ID and initial status.
     """
-    args_list = [a.strip() for a in arguments.split(",") if a.strip()] if arguments else []
+    # Keeps a `-lc,<command>` command string verbatim instead of splitting it on
+    # every comma, which both mangled the command and overran the API's
+    # two-argument cap. A JSON array is also accepted; see shell_args.
+    args_list = parse_arguments(executable, arguments)
 
     # Force a LOGIN shell for bash/sh invocations; see shell_args for why.
     # Folds into an existing flag group (`-c cmd` -> `-lc cmd`) so the
